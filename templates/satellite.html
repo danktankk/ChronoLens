@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NTP Ground Station — Satellite Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="/static/cesium/Cesium.js"></script>
+    <link href="/static/cesium/Widgets/widgets.css" rel="stylesheet">
+    <script src="/static/satellite.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html {
+            height: 100%;
+            overflow: hidden;
+        }
+        body {
+            background: #04080f;
+            color: #e2e8f0;
+            font-family: 'IBM Plex Mono', monospace;
+            overflow: hidden;
+            height: 100dvh;
+            height: 100vh; /* fallback for older browsers */
+            height: 100dvh;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+        }
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: #0a1628;
+            border-bottom: 1px solid #152040;
+            height: 42px;
+            padding: 0 1rem;
+            position: relative;
+            z-index: 1000;
+        }
+        .nav-brand {
+            font-family: 'Chakra Petch', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-right: 1.5rem;
+        }
+        .nav-tab {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 0.6rem 1.2rem;
+            color: #64748b;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            height: 42px;
+            display: flex;
+            align-items: center;
+        }
+        .nav-tab:hover { color: #e2e8f0; }
+        .nav-tab.active {
+            color: #22d3ee;
+            border-bottom-color: #22d3ee;
+        }
+        .nav-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .nav-stat {
+            font-size: 0.65rem;
+            color: #64748b;
+        }
+        .nav-stat strong { color: #34d399; }
+        #cesiumContainer {
+            width: 100%;
+            height: calc(100vh - 42px);
+            height: calc(100dvh - 42px);
+        }
+        /* Override Cesium's ugly default toolbar */
+        .cesium-viewer-toolbar { display: none !important; }
+        .cesium-viewer-bottom { display: none !important; }
+        .cesium-credit-logoContainer { display: none !important; }
+
+        /* Info panel */
+        .sat-info-panel {
+            position: absolute;
+            top: 52px;
+            right: 12px;
+            background: rgba(10, 22, 40, 0.92);
+            border: 1px solid #1e3060;
+            border-radius: 6px;
+            padding: 1rem 1.25rem;
+            min-width: 260px;
+            z-index: 999;
+            backdrop-filter: blur(8px);
+        }
+        .sat-info-title {
+            font-family: 'Chakra Petch', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #22d3ee;
+            margin-bottom: 0.6rem;
+        }
+        .sat-info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            padding: 0.2rem 0;
+            border-bottom: 1px solid rgba(30,48,96,0.3);
+        }
+        .sat-info-label { color: #64748b; }
+        .sat-info-value { color: #e2e8f0; font-weight: 500; }
+        .sat-info-value.locked { color: #34d399; }
+        .sat-info-value.visible { color: #64748b; }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            top: 42px;
+            background: #04080f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 998;
+            transition: opacity 0.8s ease;
+        }
+        .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .loading-text {
+            font-family: 'Chakra Petch', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #22d3ee;
+            margin-bottom: 0.5rem;
+        }
+        .loading-sub {
+            font-size: 0.7rem;
+            color: #64748b;
+        }
+        @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+        .loading-text { animation: pulse 1.5s ease-in-out infinite; }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(10,22,40,0.85);
+            border: 1px solid #1e3060;
+            border-radius: 6px;
+            padding: 0.6rem 1rem;
+            z-index: 999;
+            display: flex;
+            gap: 1.2rem;
+            font-size: 0.65rem;
+            backdrop-filter: blur(8px);
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; color: #64748b; }
+        .legend-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+        }
+        .legend-dot.locked { background: #34d399; box-shadow: 0 0 6px #34d399; }
+        .legend-dot.visible { background: #64748b; }
+        .legend-dot.orbit { background: transparent; border: 1.5px solid rgba(34,211,238,0.4); }
+
+        /* ── NAV DISK ── */
+        .nav-disk {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            z-index: 999;
+            width: 180px;
+            height: 180px;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .nav-disk-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: rgba(10, 22, 40, 0.85);
+            border: 1px solid #1e3060;
+            backdrop-filter: blur(8px);
+        }
+        .nav-btn {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            border-radius: 50%;
+            background: rgba(10, 22, 40, 0.9);
+            color: #22d3ee;
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .nav-btn:hover, .nav-btn.active {
+            background: rgba(34, 211, 238, 0.15);
+            border-color: #22d3ee;
+            box-shadow: 0 0 12px rgba(34, 211, 238, 0.3);
+        }
+        .nav-btn.up    { top: 4px; left: 50%; transform: translateX(-50%); }
+        .nav-btn.down  { bottom: 4px; left: 50%; transform: translateX(-50%); }
+        .nav-btn.left  { left: 4px; top: 50%; transform: translateY(-50%); }
+        .nav-btn.right { right: 4px; top: 50%; transform: translateY(-50%); }
+        .nav-btn.home  { top: 50%; left: 50%; transform: translate(-50%, -50%); width: 36px; height: 36px; font-size: 13px; }
+        .nav-btn.home  { color: #f5a623; border-color: rgba(245, 166, 35, 0.3); }
+        .nav-btn.home:hover, .nav-btn.home.active { background: rgba(245, 166, 35, 0.15); border-color: #f5a623; box-shadow: 0 0 12px rgba(245, 166, 35, 0.3); }
+        .zoom-strip {
+            position: absolute;
+            bottom: 24px;
+            right: 216px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            touch-action: none;
+        }
+        .zoom-btn {
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            border-radius: 8px;
+            background: rgba(10, 22, 40, 0.85);
+            color: #22d3ee;
+            font-size: 22px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            transition: all 0.15s;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .zoom-btn:hover, .zoom-btn.active {
+            background: rgba(34, 211, 238, 0.15);
+            border-color: #22d3ee;
+            box-shadow: 0 0 12px rgba(34, 211, 238, 0.3);
+        }
+
+        /* ── MOBILE: info panel collapsible ── */
+        .info-toggle {
+            display: none;
+            position: absolute;
+            top: 52px;
+            right: 12px;
+            z-index: 1000;
+            width: 36px;
+            height: 36px;
+            border: 1px solid #1e3060;
+            border-radius: 6px;
+            background: rgba(10, 22, 40, 0.92);
+            color: #22d3ee;
+            font-size: 14px;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ── MOBILE RESPONSIVE ── */
+        @media (max-width: 768px) {
+            .nav-bar { height: 36px; padding: 0 0.5rem; }
+            .nav-brand { font-size: 0.7rem; margin-right: 0.5rem; }
+            .nav-tab { font-size: 0.6rem; padding: 0.4rem 0.6rem; height: 36px; }
+            .nav-right { gap: 0.4rem; }
+            .nav-stat { font-size: 0.55rem; }
+            #cesiumContainer { height: calc(100vh - 36px); height: calc(100dvh - 36px); }
+            .loading-overlay { top: 36px; }
+
+            .sat-info-panel {
+                top: 46px;
+                right: 8px;
+                left: 8px;
+                min-width: unset;
+                padding: 0.6rem 0.8rem;
+                transition: opacity 0.3s, transform 0.3s;
+            }
+            .sat-info-panel.collapsed {
+                opacity: 0;
+                transform: translateY(-10px);
+                pointer-events: none;
+            }
+            .sat-info-title { font-size: 0.7rem; }
+            .sat-info-row { font-size: 0.65rem; }
+            .info-toggle { display: flex; align-items: center; justify-content: center; }
+
+            .legend {
+                bottom: 8px;
+                left: 8px;
+                padding: 0.4rem 0.6rem;
+                font-size: 0.55rem;
+                gap: 0.6rem;
+            }
+            .legend-dot { width: 6px; height: 6px; }
+
+            .nav-disk { width: 140px; height: 140px; bottom: 16px; right: 16px; }
+            .nav-btn { width: 34px; height: 34px; font-size: 14px; }
+            .nav-btn.home { width: 30px; height: 30px; font-size: 11px; }
+            .zoom-strip { right: 168px; bottom: 16px; }
+            .zoom-btn { width: 38px; height: 38px; font-size: 18px; }
+        }
+
+        @media (max-width: 480px) {
+            .nav-brand { display: none; }
+            .nav-disk { width: 140px; height: 140px; bottom: 10px; right: 10px; }
+            .nav-btn { width: 36px; height: 36px; font-size: 13px; min-width: 44px; min-height: 44px; }
+            .nav-btn.home { width: 32px; height: 32px; font-size: 11px; min-width: 44px; min-height: 44px; }
+            .zoom-strip { right: 160px; bottom: 10px; }
+            .zoom-btn { width: 38px; height: 38px; font-size: 17px; min-width: 44px; min-height: 44px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <span class="nav-brand">NTP Ground Station</span>
+        <a href="/" class="nav-tab">Dashboard</a>
+        <a href="/satellite" class="nav-tab active">Satellite Tracker</a>
+        <div class="nav-right">
+            <span class="nav-stat" id="satStatus">Connecting...</span>
+            <span style="font-size:0.6rem;color:#475569;letter-spacing:0.08em;">{{ app_version }}</span>
+        </div>
+    </nav>
+
+    <div id="cesiumContainer"></div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-text">Initializing Satellite Tracker</div>
+        <div class="loading-sub">Loading CesiumJS globe and GPS constellation data...</div>
+    </div>
+
+    <div class="sat-info-panel" id="infoPanel">
+        <div class="sat-info-title">GPS Constellation</div>
+        <div id="infoPanelContent">
+            <div class="sat-info-row">
+                <span class="sat-info-label">Satellites</span>
+                <span class="sat-info-value" id="infoTotal">—</span>
+            </div>
+            <div class="sat-info-row">
+                <span class="sat-info-label">Locked</span>
+                <span class="sat-info-value locked" id="infoLocked">—</span>
+            </div>
+            <div class="sat-info-row">
+                <span class="sat-info-label">Avg SNR</span>
+                <span class="sat-info-value" id="infoSnr">—</span>
+            </div>
+            <div class="sat-info-row">
+                <span class="sat-info-label">TLE Source</span>
+                <span class="sat-info-value">CelesTrak</span>
+            </div>
+            <div class="sat-info-row">
+                <span class="sat-info-label">Receiver</span>
+                <span class="sat-info-value" id="infoReceiver">—</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="legend-dot locked"></span> Locked / In Use</div>
+        <div class="legend-item"><span class="legend-dot visible"></span> Visible</div>
+    </div>
+
+    <!-- Mobile info toggle -->
+    <button class="info-toggle" id="infoToggle" aria-label="Toggle info panel">i</button>
+
+    <!-- Navigation disk -->
+    <div class="zoom-strip">
+        <button class="zoom-btn" data-action="zoomin" aria-label="Zoom in">+</button>
+        <button class="zoom-btn" data-action="zoomout" aria-label="Zoom out">&minus;</button>
+    </div>
+    <div class="nav-disk">
+        <div class="nav-disk-ring"></div>
+        <button class="nav-btn up" data-action="up" aria-label="Pan up">&#9650;</button>
+        <button class="nav-btn down" data-action="down" aria-label="Pan down">&#9660;</button>
+        <button class="nav-btn left" data-action="left" aria-label="Pan left">&#9664;</button>
+        <button class="nav-btn right" data-action="right" aria-label="Pan right">&#9654;</button>
+        <button class="nav-btn home" data-action="home" aria-label="Fly to receiver">&#8962;</button>
+    </div>
+
+    <script>
+        // ── CONFIG ──
+        Cesium.Ion.defaultAccessToken = '{{ cesium_token }}';
+
+        // Receiver location (from config)
+        var RECEIVER_LAT = {{ receiver_lat }};
+        var RECEIVER_LON = {{ receiver_lon }};
+        var RECEIVER_ALT = 10;
+
+        // ── INIT CESIUM ──
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            terrain: Cesium.Terrain.fromWorldTerrain(),
+            baseLayerPicker: false,
+            geocoder: false,
+            homeButton: false,
+            sceneModePicker: false,
+            selectionIndicator: true,
+            timeline: false,
+            animation: false,
+            navigationHelpButton: false,
+            fullscreenButton: false,
+            infoBox: true,
+            shadows: false,
+            skyAtmosphere: new Cesium.SkyAtmosphere(),
+        });
+
+        // Dark sky
+        viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#04080f');
+        viewer.scene.globe.enableLighting = true;
+        viewer.scene.fog.enabled = true;
+        viewer.scene.globe.atmosphereLightIntensity = 8.0;
+
+        // Receiver marker with glow ring
+        viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, RECEIVER_ALT),
+            point: {
+                pixelSize: 14,
+                color: Cesium.Color.fromCssColorString('#f5a623'),
+                outlineColor: Cesium.Color.fromCssColorString('#f5a623').withAlpha(0.3),
+                outlineWidth: 6,
+                scaleByDistance: new Cesium.NearFarScalar(1e5, 2, 5e7, 0.8),
+            },
+            label: {
+                text: 'GPS RECEIVER',
+                font: 'bold 14px IBM Plex Mono',
+                fillColor: Cesium.Color.fromCssColorString('#f5a623'),
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 3,
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                pixelOffset: new Cesium.Cartesian2(0, -18),
+                scaleByDistance: new Cesium.NearFarScalar(1e5, 1.5, 5e7, 0.5),
+            },
+            ellipse: {
+                semiMinorAxis: 200000,
+                semiMajorAxis: 200000,
+                material: Cesium.Color.fromCssColorString('#f5a623').withAlpha(0.08),
+                outline: true,
+                outlineColor: Cesium.Color.fromCssColorString('#f5a623').withAlpha(0.3),
+                outlineWidth: 2,
+                height: 0,
+            }
+        });
+
+        // Start centered on Earth, looking straight at it
+        viewer.camera.setView({
+            destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 45000000),
+            orientation: {
+                heading: 0,
+                pitch: Cesium.Math.toRadians(-90),
+                roll: 0
+            }
+        });
+
+        // Slow auto-rotation — orbit the Earth
+        var autoRotate = true;
+        viewer.clock.onTick.addEventListener(function() {
+            if (!autoRotate) return;
+            viewer.camera.rotate(Cesium.Cartesian3.UNIT_Z, -0.001);
+        });
+        // Stop auto-rotate when user interacts, resume after 10s idle
+        var idleTimer = null;
+        function pauseAutoRotate() {
+            autoRotate = false;
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(function() { autoRotate = true; }, 10000);
+        }
+        var handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+        handler.setInputAction(pauseAutoRotate, Cesium.ScreenSpaceEventType.LEFT_DOWN);
+        handler.setInputAction(pauseAutoRotate, Cesium.ScreenSpaceEventType.WHEEL);
+        // Touch support for auto-rotate pause
+        handler.setInputAction(pauseAutoRotate, Cesium.ScreenSpaceEventType.PINCH_START);
+
+        // ── TLE LOADING ──
+        var tleData = {}; // PRN -> { name, tle1, tle2, satrec }
+        var satEntities = {}; // PRN -> Cesium.Entity
+
+        async function loadTLEs() {
+            try {
+                // GPS constellation TLEs from CelesTrak
+                var resp = await fetch('https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle');
+                var text = await resp.text();
+                var lines = text.trim().split('\n');
+
+                for (var i = 0; i < lines.length - 2; i += 3) {
+                    var name = lines[i].trim();
+                    var tle1 = lines[i + 1].trim();
+                    var tle2 = lines[i + 2].trim();
+
+                    // Extract PRN from name (e.g., "GPS BIIR-2  (PRN 13)")
+                    var prnMatch = name.match(/PRN\s*(\d+)/);
+                    var prn = prnMatch ? parseInt(prnMatch[1]) : null;
+
+                    if (prn && tle1.startsWith('1 ') && tle2.startsWith('2 ')) {
+                        var satrec = satellite.twoline2satrec(tle1, tle2);
+                        tleData[prn] = { name: name, tle1: tle1, tle2: tle2, satrec: satrec };
+                    }
+                }
+                console.log('Loaded TLEs for', Object.keys(tleData).length, 'GPS satellites');
+            } catch (e) {
+                console.error('TLE load failed:', e);
+            }
+        }
+
+        // ── SATELLITE POSITION COMPUTATION ──
+        function getSatPosition(satrec, date) {
+            var posVel = satellite.propagate(satrec, date);
+            if (!posVel.position) return null;
+            var gmst = satellite.gstime(date);
+            var geo = satellite.eciToGeodetic(posVel.position, gmst);
+            return {
+                lat: satellite.degreesLat(geo.latitude),
+                lon: satellite.degreesLong(geo.longitude),
+                alt: geo.height * 350 // compress altitude to keep sats closer to globe
+            };
+        }
+
+        function getOrbitPath(satrec, date, minutes, steps) {
+            var positions = [];
+            for (var i = 0; i <= steps; i++) {
+                var t = new Date(date.getTime() + (i / steps) * minutes * 60000);
+                var pos = getSatPosition(satrec, t);
+                if (pos) positions.push(Cesium.Cartesian3.fromDegrees(pos.lon, pos.lat, pos.alt));
+            }
+            return positions;
+        }
+
+        // ── CREATE/UPDATE SATELLITE ENTITIES ──
+        var gpsData = {}; // latest from /api/gps
+
+        function updateSatellites() {
+            var now = new Date();
+            var receiverSats = gpsData.satellites || [];
+
+            // Build lookup of receiver-detected satellites
+            var detected = {};
+            for (var i = 0; i < receiverSats.length; i++) {
+                var s = receiverSats[i];
+                detected[s.PRN] = s;
+            }
+
+            var locked = 0, total = 0, totalSnr = 0;
+
+            // Update all TLE satellites
+            for (var prn in tleData) {
+                var tle = tleData[prn];
+                var pos = getSatPosition(tle.satrec, now);
+                if (!pos) continue;
+
+                var det = detected[parseInt(prn)];
+                var isLocked = det && det.used;
+                var isVisible = !!det;
+                var snr = det ? (det.ss || 0) : 0;
+
+                if (isVisible) total++;
+                if (isLocked) locked++;
+                if (det) totalSnr += snr;
+
+                var color = isLocked
+                    ? Cesium.Color.fromCssColorString('#34d399')
+                    : isVisible
+                        ? Cesium.Color.fromCssColorString('#94a3b8')
+                        : Cesium.Color.fromCssColorString('#334155');
+
+                var size = isLocked ? 16 : isVisible ? 10 : 5;
+
+                if (!satEntities[prn]) {
+                    // Solid orbit path for locked/visible sats only
+                    var orbitPositions = (isLocked || isVisible) ? getOrbitPath(tle.satrec, now, 720, 200) : [];
+
+                    satEntities[prn] = viewer.entities.add({
+                        position: Cesium.Cartesian3.fromDegrees(pos.lon, pos.lat, pos.alt),
+                        point: {
+                            pixelSize: size,
+                            color: color,
+                            outlineColor: isLocked ? Cesium.Color.fromCssColorString('#34d399').withAlpha(0.5) : Cesium.Color.TRANSPARENT,
+                            outlineWidth: isLocked ? 4 : 0,
+                            scaleByDistance: new Cesium.NearFarScalar(1e6, 1.5, 5e7, 0.6),
+                        },
+                        label: {
+                            text: 'PRN ' + prn + (det ? '  ' + snr + 'dB' : ''),
+                            font: (isLocked ? 'bold ' : '') + '13px IBM Plex Mono',
+                            fillColor: color,
+                            outlineColor: Cesium.Color.BLACK,
+                            outlineWidth: 2,
+                            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                            pixelOffset: new Cesium.Cartesian2(0, -16),
+                            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 40000000),
+                            scaleByDistance: new Cesium.NearFarScalar(1e6, 1.2, 5e7, 0.5),
+                            show: isVisible || isLocked,
+                        },
+                        polyline: orbitPositions.length > 0 ? {
+                            positions: orbitPositions,
+                            width: isLocked ? 2 : 1,
+                            material: new Cesium.PolylineGlowMaterialProperty({
+                                glowPower: 0.2,
+                                color: isLocked
+                                    ? Cesium.Color.fromCssColorString('#22d3ee').withAlpha(0.5)
+                                    : Cesium.Color.fromCssColorString('#64748b').withAlpha(0.25)
+                            }),
+                        } : undefined,
+                        description: '<table style="font-family:IBM Plex Mono,monospace;font-size:12px;">' +
+                            '<tr><td style="color:#888;padding:2px 8px;">Name</td><td>' + tle.name + '</td></tr>' +
+                            '<tr><td style="color:#888;padding:2px 8px;">PRN</td><td>' + prn + '</td></tr>' +
+                            '<tr><td style="color:#888;padding:2px 8px;">Status</td><td style="color:' + (isLocked ? '#34d399' : isVisible ? '#94a3b8' : '#475569') + ';">' + (isLocked ? 'LOCKED' : isVisible ? 'Visible' : 'Below horizon') + '</td></tr>' +
+                            (det ? '<tr><td style="color:#888;padding:2px 8px;">SNR</td><td>' + snr + ' dB</td></tr>' +
+                            '<tr><td style="color:#888;padding:2px 8px;">Elevation</td><td>' + (det.el || 0) + '°</td></tr>' +
+                            '<tr><td style="color:#888;padding:2px 8px;">Azimuth</td><td>' + (det.az || 0) + '°</td></tr>' : '') +
+                            '<tr><td style="color:#888;padding:2px 8px;">Altitude</td><td>' + Math.round(pos.alt / 1000) + ' km</td></tr>' +
+                            '</table>'
+                    });
+                } else {
+                    // Update existing entity
+                    var ent = satEntities[prn];
+                    ent.position = Cesium.Cartesian3.fromDegrees(pos.lon, pos.lat, pos.alt);
+                    ent.point.pixelSize = size;
+                    ent.point.color = color;
+                    ent.point.outlineColor = isLocked ? Cesium.Color.fromCssColorString('#34d399').withAlpha(0.5) : Cesium.Color.TRANSPARENT;
+                    ent.point.outlineWidth = isLocked ? 4 : 0;
+                    ent.label.show = isVisible || isLocked;
+                    ent.label.text = 'PRN ' + prn + (det ? '  ' + snr + 'dB' : '');
+                    ent.label.fillColor = color;
+                    ent.label.font = (isLocked ? 'bold ' : '') + '13px IBM Plex Mono';
+                }
+            }
+
+            // Update info panel
+            document.getElementById('infoTotal').textContent = total + ' detected / ' + Object.keys(tleData).length + ' in constellation';
+            document.getElementById('infoLocked').textContent = locked + ' satellites';
+            document.getElementById('infoSnr').textContent = total > 0 ? (totalSnr / total).toFixed(1) + ' dB' : '—';
+            document.getElementById('infoReceiver').textContent = Math.abs(RECEIVER_LAT).toFixed(2) + '°' + (RECEIVER_LAT >= 0 ? 'N' : 'S') + ', ' + Math.abs(RECEIVER_LON).toFixed(2) + '°' + (RECEIVER_LON >= 0 ? 'E' : 'W');
+            document.getElementById('satStatus').innerHTML = '<strong>' + locked + '</strong> locked / ' + total + ' visible';
+        }
+
+        // ── GPS DATA POLLING ──
+        async function fetchGPS() {
+            try {
+                var resp = await fetch('/api/gps');
+                gpsData = await resp.json();
+            } catch (e) {
+                console.error('GPS fetch failed:', e);
+            }
+        }
+
+        // ── INIT ──
+        async function init() {
+            await Promise.all([loadTLEs(), fetchGPS()]);
+
+            // Hide loading overlay
+            document.getElementById('loadingOverlay').classList.add('hidden');
+
+            // Initial satellite plot
+            updateSatellites();
+
+            // Fly in to a nice orbital viewing distance — Earth centered
+            viewer.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 42000000),
+                orientation: {
+                    heading: Cesium.Math.toRadians(10),
+                    pitch: Cesium.Math.toRadians(-88),
+                    roll: 0
+                },
+                duration: 3,
+                easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT
+            });
+
+            // Update loop
+            setInterval(async function() {
+                await fetchGPS();
+                updateSatellites();
+            }, 10000);
+
+            // Update positions every 2s (no GPS refetch, just recompute from TLEs)
+            setInterval(function() {
+                var now = new Date();
+                for (var prn in tleData) {
+                    if (!satEntities[prn]) continue;
+                    var pos = getSatPosition(tleData[prn].satrec, now);
+                    if (pos) {
+                        satEntities[prn].position = Cesium.Cartesian3.fromDegrees(pos.lon, pos.lat, pos.alt);
+                    }
+                }
+            }, 2000);
+        }
+
+        // ── NAV DISK CONTROLLER ──
+        (function() {
+            var PAN_RATE = 0.003;  // radians per frame
+            var ZOOM_RATE = 0.04;  // fraction per frame
+            var activeAction = null;
+            var navFrame = null;
+
+            var actions = {
+                up:      function() { viewer.camera.rotateUp(PAN_RATE); },
+                down:    function() { viewer.camera.rotateDown(PAN_RATE); },
+                left:    function() { viewer.camera.rotateLeft(PAN_RATE); },
+                right:   function() { viewer.camera.rotateRight(PAN_RATE); },
+                zoomin:  function() { var h = viewer.camera.positionCartographic ? viewer.camera.positionCartographic.height : 1e7; viewer.camera.zoomIn(h * ZOOM_RATE); },
+                zoomout: function() { var h = viewer.camera.positionCartographic ? viewer.camera.positionCartographic.height : 1e7; viewer.camera.zoomOut(h * ZOOM_RATE); },
+                home:    null  // handled separately
+            };
+
+            function startAction(action, btn) {
+                if (action === 'home') {
+                    pauseAutoRotate();
+                    viewer.camera.flyTo({
+                        destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 42000000),
+                        orientation: { heading: 0, pitch: Cesium.Math.toRadians(-88), roll: 0 },
+                        duration: 2
+                    });
+                    return;
+                }
+                pauseAutoRotate();
+                activeAction = action;
+                if (btn) btn.classList.add('active');
+                function tick() {
+                    if (!activeAction) return;
+                    if (actions[activeAction]) actions[activeAction]();
+                    navFrame = requestAnimationFrame(tick);
+                }
+                navFrame = requestAnimationFrame(tick);
+            }
+
+            function stopAction() {
+                activeAction = null;
+                if (navFrame) { cancelAnimationFrame(navFrame); navFrame = null; }
+                var btns = document.querySelectorAll('.nav-btn.active, .zoom-btn.active');
+                for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+            }
+
+            // Bind all nav/zoom buttons — mouse + touch
+            var allBtns = document.querySelectorAll('.nav-btn, .zoom-btn');
+            for (var i = 0; i < allBtns.length; i++) {
+                (function(btn) {
+                    var action = btn.getAttribute('data-action');
+                    btn.addEventListener('mousedown', function(e) { e.preventDefault(); startAction(action, btn); });
+                    btn.addEventListener('touchstart', function(e) { e.preventDefault(); e.stopPropagation(); startAction(action, btn); }, { passive: false });
+                })(allBtns[i]);
+            }
+            document.addEventListener('mouseup', stopAction);
+            document.addEventListener('touchend', stopAction);
+            document.addEventListener('touchcancel', stopAction);
+        })();
+
+        // ── MOBILE INFO PANEL TOGGLE ──
+        (function() {
+            var toggle = document.getElementById('infoToggle');
+            var panel = document.getElementById('infoPanel');
+            var collapsed = false;
+            toggle.addEventListener('click', function() {
+                collapsed = !collapsed;
+                panel.classList.toggle('collapsed', collapsed);
+                toggle.textContent = collapsed ? 'i' : '\u00d7';
+            });
+            // Auto-collapse on small screens
+            if (window.innerWidth <= 768) {
+                collapsed = true;
+                panel.classList.add('collapsed');
+            }
+        })();
+
+        init();
+
+        // ESC to go back to dashboard
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') window.location.href = '/';
+        });
+    </script>
+</body>
+</html>

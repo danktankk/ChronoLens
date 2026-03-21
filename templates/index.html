@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="ground-station">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NTP Ground Station</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Azeret+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ══════════════════════════════════════════
+           THEME: Ground Station (default dark)
+           Deep navy void, cyan wireframe, amber time
+           ══════════════════════════════════════════ */
+        :root, [data-theme="ground-station"] {
+            --bg-void: #04080f;
+            --bg-panel: #0a1628;
+            --bg-panel-hover: #111d33;
+            --border-dim: #152040;
+            --border-lit: #1e3060;
+            --accent-1: #22d3ee;        /* cyan — primary */
+            --accent-1-dim: #0e7490;
+            --accent-1-glow: rgba(34, 211, 238, 0.12);
+            --accent-2: #f5a623;        /* amber — time/warm */
+            --accent-2-dim: #c47d12;
+            --accent-2-glow: rgba(245, 166, 35, 0.15);
+            --accent-3: #34d399;        /* green — locked/good */
+            --accent-3-dim: #059669;
+            --accent-bad: #f87171;
+            --text-primary: #e2e8f0;
+            --text-secondary: #64748b;
+            --text-tertiary: #475569;
+            --grid-color: rgba(21, 32, 64, 0.5);
+            --grid-opacity: 0.2;
+            --font-display: 'Chakra Petch', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+            --scanline-opacity: 0;
+            --theme-swatch: #0e7490;
+        }
+
+        /* ══════════════════════════════════════════
+           THEME: Daylight Ops (light)
+           Warm paper white, deep navy, professional
+           ══════════════════════════════════════════ */
+        [data-theme="daylight"] {
+            --bg-void: #ebe7e0;
+            --bg-panel: #ffffff;
+            --bg-panel-hover: #f5f3ee;
+            --border-dim: #c4bdb0;
+            --border-lit: #a89e8e;
+            --accent-1: #14406e;
+            --accent-1-dim: #1a5292;
+            --accent-1-glow: rgba(20, 64, 110, 0.14);
+            --accent-2: #a84e00;
+            --accent-2-dim: #8a3f00;
+            --accent-2-glow: rgba(168, 78, 0, 0.14);
+            --accent-3: #126b3e;
+            --accent-3-dim: #0e5530;
+            --accent-bad: #b02020;
+            --text-primary: #111120;
+            --text-secondary: #3e3e52;
+            --text-tertiary: #6a6a7c;
+            --grid-color: rgba(160, 150, 130, 0.35);
+            --grid-opacity: 0.18;
+            --font-display: 'DM Sans', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+            --scanline-opacity: 0;
+            --theme-swatch: #14406e;
+        }
+
+        /* ══════════════════════════════════════════
+           THEME: Phosphor (green CRT)
+           Pure black, monochrome phosphor green
+           ══════════════════════════════════════════ */
+        [data-theme="phosphor"] {
+            --bg-void: #050805;
+            --bg-panel: #0a100a;
+            --bg-panel-hover: #0f180f;
+            --border-dim: #0f280f;
+            --border-lit: #1a3a1a;
+            --accent-1: #00ff41;
+            --accent-1-dim: #00b830;
+            --accent-1-glow: rgba(0, 255, 65, 0.08);
+            --accent-2: #00ff41;
+            --accent-2-dim: #00b830;
+            --accent-2-glow: rgba(0, 255, 65, 0.08);
+            --accent-3: #00ff41;
+            --accent-3-dim: #00cc33;
+            --accent-bad: #ff3333;
+            --text-primary: #00dd38;
+            --text-secondary: #00882a;
+            --text-tertiary: #005518;
+            --grid-color: rgba(0, 180, 48, 0.15);
+            --grid-opacity: 0.25;
+            --font-display: 'Azeret Mono', monospace;
+            --font-mono: 'Azeret Mono', monospace;
+            --scanline-opacity: 0.06;
+            --theme-swatch: #00cc33;
+        }
+
+        /* ══════════════════════════════════════════
+           THEME: Solar Observatory (warm dark)
+           Deep burgundy, rich gold, burnt orange
+           ══════════════════════════════════════════ */
+        [data-theme="solar"] {
+            --bg-void: #0c0704;
+            --bg-panel: #1a0f08;
+            --bg-panel-hover: #231610;
+            --border-dim: #2e1a0c;
+            --border-lit: #442812;
+            --accent-1: #d4a012;
+            --accent-1-dim: #a87d0e;
+            --accent-1-glow: rgba(212, 160, 18, 0.1);
+            --accent-2: #e86a20;
+            --accent-2-dim: #c44e1a;
+            --accent-2-glow: rgba(232, 106, 32, 0.1);
+            --accent-3: #d4a012;
+            --accent-3-dim: #a87d0e;
+            --accent-bad: #e84040;
+            --text-primary: #e8d5b8;
+            --text-secondary: #9a7e5a;
+            --text-tertiary: #6b5840;
+            --grid-color: rgba(68, 40, 18, 0.5);
+            --grid-opacity: 0.2;
+            --font-display: 'Chakra Petch', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+            --scanline-opacity: 0;
+            --theme-swatch: #d4a012;
+        }
+
+        /* ══════════════════════════════════════════
+           THEME: Arctic (cool light)
+           Ice white, steel blue, crisp & cold
+           ══════════════════════════════════════════ */
+        [data-theme="arctic"] {
+            --bg-void: #dfe8f0;
+            --bg-panel: #f2f6fa;
+            --bg-panel-hover: #e6ecf3;
+            --border-dim: #a8bcd0;
+            --border-lit: #8aa2ba;
+            --accent-1: #2060a0;
+            --accent-1-dim: #184a82;
+            --accent-1-glow: rgba(32, 96, 160, 0.14);
+            --accent-2: #0e6e7e;
+            --accent-2-dim: #0a5868;
+            --accent-2-glow: rgba(14, 110, 126, 0.14);
+            --accent-3: #1a7248;
+            --accent-3-dim: #145a38;
+            --accent-bad: #b02020;
+            --text-primary: #0e1e30;
+            --text-secondary: #384e64;
+            --text-tertiary: #607888;
+            --grid-color: rgba(140, 165, 190, 0.35);
+            --grid-opacity: 0.22;
+            --font-display: 'DM Sans', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+            --scanline-opacity: 0;
+            --theme-swatch: #2060a0;
+        }
+
+        /* ══════════════════════════════════════════
+           THEME: Amber Terminal (monochrome)
+           Pure black, amber everything
+           ══════════════════════════════════════════ */
+        [data-theme="amber-terminal"] {
+            --bg-void: #080600;
+            --bg-panel: #100c02;
+            --bg-panel-hover: #181204;
+            --border-dim: #2a1e06;
+            --border-lit: #3d2c0a;
+            --accent-1: #ffb000;
+            --accent-1-dim: #cc8d00;
+            --accent-1-glow: rgba(255, 176, 0, 0.08);
+            --accent-2: #ffb000;
+            --accent-2-dim: #cc8d00;
+            --accent-2-glow: rgba(255, 176, 0, 0.08);
+            --accent-3: #ffb000;
+            --accent-3-dim: #cc8d00;
+            --accent-bad: #ff4444;
+            --text-primary: #eeaa00;
+            --text-secondary: #996600;
+            --text-tertiary: #664400;
+            --grid-color: rgba(180, 120, 0, 0.12);
+            --grid-opacity: 0.2;
+            --font-display: 'Azeret Mono', monospace;
+            --font-mono: 'Azeret Mono', monospace;
+            --scanline-opacity: 0.05;
+            --theme-swatch: #ffb000;
+        }
+
+        /* ══════════════════════════════════════════
+           THEME: Deep Space (OLED dark + violet)
+           True black, magenta/violet, premium
+           ══════════════════════════════════════════ */
+        [data-theme="deep-space"] {
+            --bg-void: #000000;
+            --bg-panel: #08060e;
+            --bg-panel-hover: #100c18;
+            --border-dim: #1a1428;
+            --border-lit: #2a2040;
+            --accent-1: #a78bfa;
+            --accent-1-dim: #7c5cc4;
+            --accent-1-glow: rgba(167, 139, 250, 0.08);
+            --accent-2: #f472b6;
+            --accent-2-dim: #d44a9a;
+            --accent-2-glow: rgba(244, 114, 182, 0.08);
+            --accent-3: #6ee7b7;
+            --accent-3-dim: #34d399;
+            --accent-bad: #fb7185;
+            --text-primary: #e0dce8;
+            --text-secondary: #6e6880;
+            --text-tertiary: #4a4458;
+            --grid-color: rgba(42, 32, 64, 0.5);
+            --grid-opacity: 0.15;
+            --font-display: 'DM Sans', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+            --scanline-opacity: 0;
+            --theme-swatch: #a78bfa;
+        }
+
+        /* ══════════════════════════════════════════
+           BASE STYLES
+           ══════════════════════════════════════════ */
+        body {
+            background: var(--bg-void);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.4s ease, color 0.3s ease;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 60px 60px;
+            opacity: var(--grid-opacity);
+            pointer-events: none;
+            z-index: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        /* Scanline overlay (for CRT themes) */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg, transparent, transparent 2px,
+                rgba(0,0,0, var(--scanline-opacity)) 2px,
+                rgba(0,0,0, var(--scanline-opacity)) 4px
+            );
+            pointer-events: none;
+            z-index: 9998;
+        }
+
+        .app { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 1.25rem 1.5rem; }
+
+        /* Transition helper for theme switching */
+        .panel, .metric-card, .time-cell, .viz-panel, .btn-settings, .modal-box,
+        .form-input, .form-select, .data-table td, .data-table th {
+            transition: background 0.35s ease, border-color 0.35s ease, color 0.3s ease;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 0 1.25rem;
+            border-bottom: 1px solid var(--border-dim);
+            margin-bottom: 1.25rem;
+        }
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .logo-mark {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-1-dim);
+            box-shadow: 0 0 20px var(--accent-1-glow), inset 0 0 12px var(--accent-1-glow);
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--bg-panel);
+            transition: border-color 0.35s, box-shadow 0.35s;
+        }
+        .logo-mark img { width: 100%; height: 100%; object-fit: contain; }
+        .header-title {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .header-subtitle {
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+        .header-actions { display: flex; gap: 0.6rem; align-items: center; }
+
+        /* ── THEME PICKER ── */
+        .theme-picker {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 8px;
+            border: 1px solid var(--border-dim);
+            border-radius: 20px;
+            background: var(--bg-panel);
+            transition: background 0.35s, border-color 0.35s;
+        }
+        .theme-swatch {
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+        .theme-swatch:hover {
+            transform: scale(1.25);
+        }
+        .theme-swatch.active {
+            border-color: var(--text-primary);
+            box-shadow: 0 0 6px var(--accent-1-glow);
+            transform: scale(1.3);
+        }
+        .theme-swatch[data-theme="ground-station"] { background: #0e7490; }
+        .theme-swatch[data-theme="daylight"] { background: #f4f1ec; border-color: #c2baa8; }
+        .theme-swatch[data-theme="phosphor"] { background: #00cc33; }
+        .theme-swatch[data-theme="solar"] { background: #d4a012; }
+        .theme-swatch[data-theme="arctic"] { background: #eaf0f6; border-color: #a8bdd0; }
+        .theme-swatch[data-theme="amber-terminal"] { background: #ffb000; }
+        .theme-swatch[data-theme="deep-space"] { background: #a78bfa; }
+
+        .btn-settings {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 0.45rem 0.9rem;
+            border: 1px solid var(--border-lit);
+            border-radius: 4px;
+            background: var(--bg-panel);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-settings:hover {
+            border-color: var(--accent-2-dim);
+            color: var(--accent-2);
+            box-shadow: 0 0 12px var(--accent-2-glow);
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--accent-3);
+            box-shadow: 0 0 8px var(--accent-3-dim);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        .status-dot.error { background: var(--accent-bad); box-shadow: 0 0 8px var(--accent-bad); }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* ── TIME STRIP ── */
+        .time-strip {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        .time-cell {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: 6px;
+            padding: 1rem 1.25rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .time-cell::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            transition: background 0.35s;
+        }
+        .time-cell.local::before { background: linear-gradient(90deg, transparent, var(--accent-2), transparent); }
+        .time-cell.gps::before { background: linear-gradient(90deg, transparent, var(--accent-1), transparent); }
+        .time-label {
+            font-size: 0.6rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            margin-bottom: 0.4rem;
+        }
+        .time-value {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+        .time-cell.local .time-value { color: var(--accent-2); text-shadow: 0 0 20px var(--accent-2-glow); }
+        .time-cell.gps .time-value { color: var(--accent-1); text-shadow: 0 0 20px var(--accent-1-glow); }
+
+        /* ── METRICS ── */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        .metric-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: 6px;
+            padding: 1rem 1.25rem;
+        }
+        .metric-label {
+            font-size: 0.6rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            margin-bottom: 0.35rem;
+        }
+        .metric-value {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+        .metric-value.highlight { color: var(--accent-3); }
+        .metric-value.accent2 { color: var(--accent-2); }
+
+        /* ── VIZ ROW ── */
+        .viz-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+        .viz-panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .viz-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border-dim);
+        }
+        .viz-title {
+            font-family: var(--font-display);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        .viz-badge {
+            font-size: 0.6rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            border: 1px solid var(--border-dim);
+            color: var(--text-tertiary);
+        }
+        .viz-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+        }
+        .globe-canvas, .radar-canvas { display: block; opacity: 0; transition: opacity 1.5s ease; }
+
+        /* ── VIZ PICKER ── */
+        .viz-picker-btn {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0.4rem 1rem;
+            border: 2px solid var(--accent-1);
+            border-radius: 5px;
+            background: var(--accent-1-glow);
+            color: var(--accent-1);
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            box-shadow: 0 0 10px var(--accent-1-glow), inset 0 0 8px var(--accent-1-glow);
+            position: relative;
+            z-index: 10;
+        }
+        .viz-picker-btn:hover {
+            border-color: var(--accent-1);
+            color: var(--text-primary);
+            box-shadow: 0 0 20px var(--accent-1-glow), inset 0 0 12px var(--accent-1-glow);
+            background: var(--accent-1-glow);
+        }
+        .viz-picker-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+        .viz-picker-overlay.open { display: flex; }
+        .viz-picker-box {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-lit);
+            border-radius: 8px;
+            width: 100%;
+            max-width: 520px;
+            max-height: 80vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-lit) transparent;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+            padding: 1.25rem;
+        }
+        .viz-picker-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+        .viz-picker-category {
+            padding: 10px 0 6px;
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            border-top: 1px solid var(--border-dim);
+            margin-top: 4px;
+        }
+        .viz-picker-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+            transition: all 0.15s;
+        }
+        .viz-picker-item .viz-name {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .viz-picker-item .viz-desc {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            line-height: 1.4;
+            white-space: normal;
+        }
+        .viz-picker-item:hover {
+            background: var(--bg-panel-hover);
+            color: var(--text-primary);
+        }
+        .viz-picker-item:hover .viz-desc { color: var(--text-secondary); }
+        .viz-picker-item.active {
+            background: var(--accent-1-glow);
+            color: var(--accent-1);
+            font-weight: 600;
+        }
+        .viz-picker-item .viz-icon {
+            font-size: 0.85rem;
+            width: 20px;
+            text-align: center;
+        }
+        .viz-picker-wrap {
+            position: relative;
+        }
+        .viz-picker-item .viz-desc-active {
+            color: var(--accent-1-dim);
+        }
+
+        .sat-count-strip {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            margin-top: 0.75rem;
+        }
+        .sat-count-number {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent-1);
+            line-height: 1;
+            transition: color 0.35s;
+        }
+        .sat-count-label {
+            font-size: 0.6rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            line-height: 1.3;
+        }
+        .sweep-bar-container {
+            width: 100%;
+            height: 2px;
+            background: var(--border-dim);
+            border-radius: 1px;
+            margin-top: 0.75rem;
+            overflow: hidden;
+        }
+        .sweep-bar-fill {
+            height: 100%;
+            background: var(--accent-1-dim);
+            border-radius: 1px;
+            transition: width 1s linear, background 0.35s;
+        }
+
+        /* ── TABLES ── */
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 1.25rem;
+        }
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border-dim);
+        }
+        .panel-title {
+            font-family: var(--font-display);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        .panel-badge {
+            font-size: 0.6rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            border: 1px solid var(--border-dim);
+            color: var(--text-tertiary);
+        }
+
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+        .data-table thead { background: rgba(128,128,128,0.03); }
+        .data-table th {
+            padding: 0.5rem 0.9rem;
+            text-align: left;
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            border-bottom: 1px solid var(--border-dim);
+        }
+        .data-table td {
+            padding: 0.45rem 0.9rem;
+            border-bottom: 1px solid rgba(128,128,128,0.06);
+            color: var(--text-secondary);
+        }
+        .data-table tbody tr { transition: background 0.15s; }
+        .data-table tbody tr:hover { background: var(--bg-panel-hover); }
+        .data-table tbody tr.row-active { background: var(--accent-1-glow); }
+        .data-table tbody tr.row-active td { color: var(--accent-1); font-weight: 500; }
+
+        .sat-table-wrap {
+            max-height: 260px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-lit) transparent;
+        }
+        .sat-status-locked { color: var(--accent-3); font-weight: 600; font-size: 0.65rem; letter-spacing: 0.05em; }
+        .sat-status-visible { color: var(--text-tertiary); font-size: 0.65rem; }
+        .snr-bar-bg {
+            width: 46px; height: 3px;
+            background: var(--border-dim);
+            border-radius: 2px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+        .snr-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+
+        /* ── FOOTER ── */
+        .footer {
+            text-align: center;
+            padding: 1.25rem 0;
+            border-top: 1px solid var(--border-dim);
+        }
+        .footer a {
+            color: var(--text-tertiary);
+            text-decoration: none;
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            transition: color 0.2s;
+        }
+        .footer a:hover { color: var(--accent-2); }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-lit);
+            border-radius: 8px;
+            width: 100%;
+            max-width: 440px;
+            padding: 1.75rem;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+        }
+        .modal-box h2 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 1.25rem;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.6rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            margin-bottom: 0.35rem;
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            background: var(--bg-void);
+            border: 1px solid var(--border-dim);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            outline: none;
+            transition: border-color 0.2s;
+            margin-bottom: 0.9rem;
+        }
+        .form-input:focus, .form-select:focus { border-color: var(--accent-1-dim); }
+        .form-select option { background: var(--bg-void); color: var(--text-primary); }
+        .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.5rem; }
+        .btn-cancel {
+            font-family: var(--font-mono); font-size: 0.7rem; padding: 0.45rem 1rem;
+            border: 1px solid var(--border-dim); border-radius: 4px;
+            background: transparent; color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+        }
+        .btn-cancel:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
+        .btn-save {
+            font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600; padding: 0.45rem 1rem;
+            border: 1px solid var(--accent-1-dim); border-radius: 4px;
+            background: var(--accent-1-glow); color: var(--accent-1); cursor: pointer; transition: all 0.2s;
+        }
+        .btn-save:hover { box-shadow: 0 0 15px var(--accent-1-glow); }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fade-up {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in { animation: fade-up 1.8s ease-out both; }
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
+        .delay-3 { animation-delay: 0.7s; }
+        .delay-4 { animation-delay: 0.9s; }
+        .delay-5 { animation-delay: 1.1s; }
+        .delay-6 { animation-delay: 1.3s; }
+
+        @media (max-width: 960px) {
+            .viz-row { grid-template-columns: 1fr; }
+            .time-strip { grid-template-columns: 1fr; }
+            .metrics-row { grid-template-columns: 1fr; }
+            .time-value { font-size: 1.2rem; }
+            .theme-picker { gap: 3px; padding: 3px 6px; }
+            .theme-swatch { width: 12px; height: 12px; }
+        }
+    </style>
+    </style>
+    <style>
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-dim);
+            height: 38px;
+            padding: 0 1rem;
+            position: relative;
+            z-index: 100;
+        }
+        .nav-brand {
+            font-family: var(--font-display);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            margin-right: 1.5rem;
+        }
+        .nav-tab {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 0 1rem;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            height: 38px;
+            display: flex;
+            align-items: center;
+        }
+        .nav-tab:hover { color: var(--text-primary); }
+        .nav-tab.active {
+            color: var(--accent-1);
+            border-bottom-color: var(--accent-1);
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <span class="nav-brand">NTP Ground Station</span>
+        <a href="/" class="nav-tab active">Dashboard</a>
+        <a href="/satellite" class="nav-tab">Satellite Tracker</a>
+        <span style="margin-left:auto;font-size:0.6rem;color:var(--text-tertiary);letter-spacing:0.08em;">{{ app_version }}</span>
+    </nav>
+    <div class="app">
+
+        <header class="header animate-in">
+            <div class="header-left">
+                <div class="logo-mark">
+                    <img src="/static/images/ntp-dashboard-logo.png" alt="NTP">
+                </div>
+                <div>
+                    <div class="header-title">NTP Ground Station</div>
+                    <div class="header-subtitle">Chrony &amp; GPS Monitoring Console</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="theme-picker" id="themePicker">
+                    <div class="theme-swatch active" data-theme="ground-station" title="Ground Station"></div>
+                    <div class="theme-swatch" data-theme="daylight" title="Daylight Ops"></div>
+                    <div class="theme-swatch" data-theme="arctic" title="Arctic"></div>
+                    <div class="theme-swatch" data-theme="phosphor" title="Phosphor CRT"></div>
+                    <div class="theme-swatch" data-theme="solar" title="Solar Observatory"></div>
+                    <div class="theme-swatch" data-theme="amber-terminal" title="Amber Terminal"></div>
+                    <div class="theme-swatch" data-theme="deep-space" title="Deep Space"></div>
+                </div>
+                <div class="status-dot" id="statusDot" title="System status"></div>
+                <button class="btn-settings" onclick="openSettings()">Config</button>
+            </div>
+        </header>
+
+        <div class="time-strip animate-in delay-1">
+            <div class="time-cell local">
+                <div class="time-label">Local System Time</div>
+                <div class="time-value" id="localTimeDisplay">--:--:--.---</div>
+            </div>
+            <div class="time-cell gps">
+                <div class="time-label">GPS Satellite Time (UTC)</div>
+                <div class="time-value" id="gpsTimeDisplay">Acquiring lock&hellip;</div>
+            </div>
+        </div>
+
+        <div class="metrics-row animate-in delay-2">
+            <div class="metric-card">
+                <div class="metric-label">System Time Offset</div>
+                <div class="metric-value highlight" id="sysOffset">Waiting for sync&hellip;</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Connection Target</div>
+                <div class="metric-value accent2" id="connMode">Loading&hellip;</div>
+            </div>
+        </div>
+
+        <div class="animate-in delay-3" style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:0.5rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span class="viz-title" id="vizLeftTitle">Satellite Constellation</span>
+                <div style="display:flex;gap:0.5rem;align-items:center;position:relative;">
+                    <span class="viz-badge" id="satCount">0 tracked</span>
+                    <button class="viz-picker-btn" onclick="openVizPicker('left')">&#9662; CHANGE VIEW</button>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span class="viz-title" id="vizRightTitle">GPS Skyplot</span>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <span class="viz-badge" id="satCountBadgeHeader">gpspipe &middot; 30s</span>
+                    <button class="viz-picker-btn" onclick="openVizPicker('right')">&#9662; CHANGE VIEW</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="viz-row">
+            <div class="viz-panel animate-in delay-3">
+                <div class="viz-body">
+                    <canvas id="globeCanvas" class="globe-canvas" width="420" height="420"></canvas>
+                    <canvas id="cobeLeft" width="840" height="840" style="display:none;width:420px;height:420px;"></canvas>
+                    <div class="sat-count-strip" id="satCountStrip">
+                        <div class="sat-count-number" id="satCountNum">0</div>
+                        <div class="sat-count-label">Satellites<br>Locked</div>
+                    </div>
+                </div>
+            </div>
+            <div class="viz-panel animate-in delay-4">
+                <div class="viz-body">
+                    <canvas id="radarCanvas" class="radar-canvas" width="420" height="420"></canvas>
+                    <canvas id="cobeRight" width="840" height="840" style="display:none;width:420px;height:420px;"></canvas>
+                    <div class="sweep-bar-container">
+                        <div class="sweep-bar-fill" id="sweepBar" style="width:100%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel animate-in delay-5">
+            <div class="panel-header">
+                <span class="panel-title">NTP Sources</span>
+                <span class="panel-badge">chronyc &middot; 2s</span>
+            </div>
+            <table class="data-table">
+                <thead><tr><th>St</th><th>Source</th><th>Str</th><th>Poll</th><th>Reach</th><th>LastRx</th><th>Offset</th></tr></thead>
+                <tbody id="ntpTableBody">
+                    <tr><td colspan="7" style="padding:1.5rem;color:var(--text-tertiary);text-align:center;">Connecting&hellip;</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="panel animate-in delay-6">
+            <div class="panel-header">
+                <span class="panel-title">Satellite Detail</span>
+                <span class="panel-badge" id="satCountBadge">0 tracked</span>
+            </div>
+            <div class="sat-table-wrap">
+                <table class="data-table">
+                    <thead><tr><th>PRN</th><th>Elev</th><th>Azimuth</th><th>SNR</th><th>Status</th></tr></thead>
+                    <tbody id="satTableBody">
+                        <tr><td colspan="5" style="padding:1.5rem;color:var(--text-tertiary);text-align:center;">Waiting for GPS data&hellip;</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VIZ PICKER MODAL -->
+        <div class="viz-picker-overlay" id="vizPickerModal">
+            <div class="viz-picker-box">
+                <div class="viz-picker-title" id="vizPickerTitle">Choose Visualization</div>
+                <div id="vizPickerContent"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <a href="https://github.com/NightHawkATL/ntp-dashboard" target="_blank">ntp-dashboard</a>
+            <span style="color:var(--text-tertiary);margin:0 0.4rem;">&middot;</span>
+            <a href="https://github.com/NightHawkATL/ntp-dashboard/releases" target="_blank">{{ app_version }}</a>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-box">
+            <h2>Connection Config</h2>
+            <form id="configForm">
+                <label class="form-label">Target Mode</label>
+                <select id="mode" class="form-select" onchange="toggleRemote()">
+                    <option value="local">Local (Docker Host)</option>
+                    <option value="remote">Remote (SSH)</option>
+                </select>
+                <div id="remoteFields" style="display:none;">
+                    <label class="form-label">Server IP</label>
+                    <input type="text" id="host" class="form-input" placeholder="192.168.1.10">
+                    <label class="form-label">SSH Username</label>
+                    <input type="text" id="user" class="form-input" placeholder="ubuntu">
+                    <label class="form-label">Auth Method</label>
+                    <select id="auth" class="form-select" onchange="toggleAuthFields()">
+                        <option value="key">SSH Key (mounted)</option>
+                        <option value="password">Password</option>
+                    </select>
+                    <div id="keyStatus" style="margin-bottom:0.9rem;">
+                        <span id="keyIndicator" style="font-size:0.7rem;"></span>
+                    </div>
+                    <div id="passwordFields" style="display:none;">
+                        <label class="form-label">SSH Password</label>
+                        <input type="password" id="password" class="form-input" placeholder="Enter password">
+                    </div>
+                </div>
+
+                <div style="border-top:1px solid var(--border-dim);margin-top:1rem;padding-top:1rem;">
+                    <label class="form-label" style="margin-bottom:0.5rem;font-size:0.65rem;color:var(--accent-1);letter-spacing:0.1em;">Satellite Tracker (CesiumJS)</label>
+                    <p style="font-size:0.65rem;color:var(--text-tertiary);margin-bottom:0.7rem;line-height:1.5;">
+                        The Satellite Tracker tab uses <a href="https://cesium.com/ion/" target="_blank" style="color:var(--accent-1);text-decoration:none;">Cesium Ion</a> for 3D globe imagery.
+                        Sign up free at <a href="https://ion.cesium.com/signup" target="_blank" style="color:var(--accent-1);text-decoration:none;">ion.cesium.com/signup</a>,
+                        then copy your Default Access Token from the <a href="https://ion.cesium.com/tokens" target="_blank" style="color:var(--accent-1);text-decoration:none;">Access Tokens</a> page.
+                        Required scopes: <code style="font-size:0.6rem;color:var(--text-secondary);">assets:read</code>.
+                    </p>
+                    <label class="form-label">Cesium Ion Access Token</label>
+                    <input type="text" id="cesiumToken" class="form-input" placeholder="eyJhbGciOi..." style="font-size:0.65rem;">
+                    <label class="form-label">Receiver Location</label>
+                    <div style="display:flex;gap:0.5rem;margin-bottom:0.9rem;">
+                        <input type="text" id="receiverLat" class="form-input" placeholder="Latitude" style="margin-bottom:0;flex:1;">
+                        <input type="text" id="receiverLon" class="form-input" placeholder="Longitude" style="margin-bottom:0;flex:1;">
+                        <button type="button" class="btn-save" style="white-space:nowrap;padding:0.4rem 0.6rem;font-size:0.6rem;" onclick="autoDetectLocation()">Auto-Detect</button>
+                    </div>
+                    <div id="locationStatus" style="font-size:0.6rem;margin-bottom:0.5rem;min-height:1em;"></div>
+                </div>
+
+                <div style="border-top:1px solid var(--border-dim);margin-top:1rem;padding-top:1rem;">
+                    <label class="form-label">Auto-Cycle Visualizations</label>
+                    <select id="cycleInterval" class="form-select" onchange="setAutoCycle(parseInt(this.value))">
+                        <option value="0">Off</option>
+                        <option value="10">Every 10 seconds</option>
+                        <option value="15">Every 15 seconds</option>
+                        <option value="30">Every 30 seconds</option>
+                        <option value="60">Every 60 seconds</option>
+                        <option value="120">Every 2 minutes</option>
+                        <option value="300">Every 5 minutes</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeSettings()">Cancel</button>
+                    <button type="submit" class="btn-save">Save &amp; Apply</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/visualizations.js"></script>
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>

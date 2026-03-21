@@ -1,0 +1,11 @@
+## Web UI will be available on port 55234 once deployed ##
+
+services:
+  ntp-dashboard:
+    build: .
+    container_name: ntp-dashboard
+    network_mode: "host"
+    volumes:
+      - ./data:/app/data        # Persists config + encryption key
+      - ./ssh:/app/ssh:ro       # Mount SSH private key (read-only)
+    restart: unless-stopped
