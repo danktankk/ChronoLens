@@ -6,6 +6,30 @@ A real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Runs 
 
 > **Credits:** ChronoLens is built on [NTP Dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawk-ATL](https://github.com/NightHawkATL). The original idea and core code are his work. If you find this useful, please go star his repo.
 
+![Dashboard](screenshots/dashboard-main.png)
+
+![Satellite Tracker](screenshots/satellite-tracker.png)
+
+### Themes
+
+| Ground Station | Phosphor | Deep Space |
+|---|---|---|
+| ![Ground Station](screenshots/theme-ground-station.png) | ![Phosphor](screenshots/theme-phosphor.png) | ![Deep Space](screenshots/theme-deep-space.png) |
+
+| Daylight | Solar | Arctic | Amber Terminal |
+|---|---|---|---|
+| ![Daylight](screenshots/theme-daylight.png) | ![Solar](screenshots/theme-solar.png) | ![Arctic](screenshots/theme-arctic.png) | ![Amber Terminal](screenshots/theme-amber-terminal.png) |
+
+### Visualizations
+
+| Signal Skyline | Chrony Dashboard | Planet Earth |
+|---|---|---|
+| ![Skyline](screenshots/viz-skyline.png) | ![Chrony](screenshots/viz-chrony-dash.png) | ![Planet](screenshots/viz-planet.png) |
+
+| Offset Timeline | Reach Pattern | Stratum Tree |
+|---|---|---|
+| ![Timeline](screenshots/viz-timeline.png) | ![Reach](screenshots/viz-reach.png) | ![Tree](screenshots/viz-tree.png) |
+
 ---
 
 ## Image Variants
