@@ -8,65 +8,65 @@ var THEMES = {
     'ground-station': {
         wire: [34, 211, 238],       // cyan
         locked: [52, 211, 153],     // green
-        dim: [100, 116, 139],       // grey
+        dim: [132, 148, 167],       // grey — boosted
         sweep: [34, 211, 238],
         center: [245, 166, 35],     // amber
         label: [226, 232, 240],
-        labelDim: [100, 116, 139],
+        labelDim: [140, 156, 179],
     },
     'daylight': {
         wire: [20, 64, 110],
         locked: [18, 107, 62],
-        dim: [130, 120, 108],
+        dim: [100, 100, 116],
         sweep: [20, 64, 110],
         center: [168, 78, 0],
         label: [17, 17, 32],
-        labelDim: [106, 106, 120],
+        labelDim: [80, 80, 96],
     },
     'phosphor': {
         wire: [0, 255, 65],
         locked: [0, 255, 65],
-        dim: [0, 100, 28],
+        dim: [0, 144, 38],
         sweep: [0, 255, 65],
         center: [0, 255, 65],
         label: [0, 220, 56],
-        labelDim: [0, 85, 24],
+        labelDim: [0, 150, 42],
     },
     'solar': {
         wire: [212, 160, 18],
         locked: [212, 160, 18],
-        dim: [107, 88, 64],
+        dim: [160, 130, 90],
         sweep: [232, 106, 32],
         center: [232, 106, 32],
         label: [232, 213, 184],
-        labelDim: [107, 88, 64],
+        labelDim: [160, 130, 90],
     },
     'arctic': {
         wire: [32, 96, 160],
         locked: [26, 114, 72],
-        dim: [96, 120, 140],
+        dim: [64, 88, 108],
         sweep: [32, 96, 160],
         center: [14, 110, 126],
         label: [14, 30, 48],
-        labelDim: [96, 120, 136],
+        labelDim: [64, 88, 108],
     },
     'amber-terminal': {
         wire: [255, 176, 0],
         locked: [255, 176, 0],
-        dim: [102, 68, 0],
+        dim: [178, 120, 0],
         sweep: [255, 176, 0],
         center: [255, 176, 0],
         label: [238, 170, 0],
-        labelDim: [102, 68, 0],
+        labelDim: [178, 120, 0],
     },
     'deep-space': {
         wire: [167, 139, 250],
         locked: [110, 231, 183],
-        dim: [74, 68, 88],
+        dim: [120, 112, 140],
         sweep: [167, 139, 250],
         center: [244, 114, 182],
         label: [224, 220, 232],
-        labelDim: [74, 68, 88],
+        labelDim: [120, 112, 140],
     }
 };
 
@@ -437,14 +437,14 @@ function drawRadar(ctx, cw, ch, t) {
 
     // Labels
     ctx.font = '500 10px IBM Plex Mono, monospace';
-    ctx.fillStyle = rgb(TC.label, 0.25); ctx.textAlign = 'center';
+    ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'center';
     ctx.fillText('N', rcx, rcy-rr-8);
     ctx.fillText('S', rcx, rcy+rr+15);
     ctx.fillText('E', rcx+rr+12, rcy+4);
     ctx.fillText('W', rcx-rr-12, rcy+4);
 
-    ctx.font = '400 8px IBM Plex Mono, monospace';
-    ctx.fillStyle = rgb(TC.label, 0.12);
+    ctx.font = '400 9px IBM Plex Mono, monospace';
+    ctx.fillStyle = rgb(TC.label, 0.5);
     ctx.fillText('30\u00b0', rcx+rr*2/3+2, rcy-4);
     ctx.fillText('60\u00b0', rcx+rr/3+2, rcy-4);
 
@@ -483,8 +483,8 @@ function drawRadar(ctx, cw, ch, t) {
         ctx.beginPath(); ctx.arc(sx, sy, sat.used?3.5:2, 0, Math.PI*2);
         ctx.fillStyle = rgb(col, sat.used?1:0.5); ctx.fill();
 
-        ctx.font = (sat.used?'600 ':'400 ')+'8px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(sat.used?TC.label:TC.labelDim, sat.used?0.7:0.4);
+        ctx.font = (sat.used?'600 ':'400 ')+'9px IBM Plex Mono, monospace';
+        ctx.fillStyle = rgb(sat.used?TC.label:TC.labelDim, sat.used?0.8:0.7);
         ctx.textAlign = 'left';
         ctx.fillText(sat.PRN, sx+6, sy+3);
     }

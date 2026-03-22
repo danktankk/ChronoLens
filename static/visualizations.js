@@ -41,7 +41,7 @@ var VizEngine = (function() {
         ctx.fillStyle = rgb(col, sat.used ? 1 : 0.5); ctx.fill();
 
         ctx.font = (sat.used ? '600 ' : '400 ') + fs + 'px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(sat.used ? TC.label : TC.labelDim, sat.used ? 0.6 : 0.3);
+        ctx.fillStyle = rgb(sat.used ? TC.label : TC.labelDim, sat.used ? 0.9 : 0.7);
         ctx.textAlign = 'left';
         ctx.fillText(sat.PRN, x + (opts && opts.labelOffsetX || sz + 4), y + (opts && opts.labelOffsetY || 3));
     }
@@ -120,7 +120,7 @@ var VizEngine = (function() {
     }
     function drawEmpty(ctx, w, h, TC, msg) {
         ctx.font = '500 11px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(TC.labelDim, 0.3); ctx.textAlign = 'center';
+        ctx.fillStyle = rgb(TC.labelDim, 0.7); ctx.textAlign = 'center';
         ctx.fillText(msg || 'NO DATA', w/2, h/2);
     }
     function formatNano(ns) {
@@ -175,13 +175,13 @@ var VizEngine = (function() {
             ctx.fillStyle = rgb(col, s.used ? 0.9 * pulse : 0.3);
             ctx.fillRect(x, y, barW, 2);
 
-            ctx.font = '600 7px IBM Plex Mono, monospace';
+            ctx.font = '600 9px IBM Plex Mono, monospace';
             ctx.fillStyle = rgb(TC.label, s.used ? 0.7 : 0.3);
             ctx.textAlign = 'center';
             ctx.fillText(s.PRN, x + barW/2, groundY + 12);
             if (barH > 20) {
                 ctx.font = '500 8px IBM Plex Mono, monospace';
-                ctx.fillStyle = rgb(TC.label, 0.6);
+                ctx.fillStyle = rgb(TC.label, 0.8);
                 ctx.fillText(snr.toFixed(0), x + barW/2, y - 6);
             }
         }
@@ -223,7 +223,7 @@ var VizEngine = (function() {
             drawSatDot(ctx, sx, sy, s, t, i, TC, { labelOffsetX: 7 });
         }
         ctx.font = '500 10px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(TC.label, 0.3); ctx.textAlign = 'center';
+        ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'center';
         ctx.fillText('N', cx, cy-r-8); ctx.fillText('S', cx, cy+r+14);
         ctx.fillText('E', cx+r+12, cy+4); ctx.fillText('W', cx-r-12, cy+4);
     }
@@ -245,7 +245,7 @@ var VizEngine = (function() {
         var data = trackingHistory.length >= 2 ? trackingHistory : null;
         if (!data) {
             ctx.font = '500 10px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(TC.label, 0.3); ctx.textAlign = 'center';
+            ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'center';
             ctx.fillText('COLLECTING OFFSET DATA...', w/2, h/2);
             ctx.fillText('(updates every 2s)', w/2, h/2 + 16);
             return;
@@ -283,7 +283,7 @@ var VizEngine = (function() {
 
         // Labels
         ctx.font = '500 8px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(TC.label, 0.4); ctx.textAlign = 'left';
+        ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'left';
         ctx.fillText('SYSTEM OFFSET', pad, pad - 8);
         ctx.textAlign = 'right';
         ctx.fillText('+' + formatNano(range), pad - 4, pad + 8);
@@ -344,7 +344,7 @@ var VizEngine = (function() {
 
             // Label — bigger, brighter
             ctx.font = '600 9px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(TC.label, 0.6); ctx.textAlign = 'left';
+            ctx.fillStyle = rgb(TC.label, 0.8); ctx.textAlign = 'left';
             ctx.fillText(m.label, x + 8, y + 15);
 
             // Value — much bigger
@@ -425,29 +425,29 @@ var VizEngine = (function() {
             ctx.save();
             ctx.translate(x + barW/2, pad + gh + 5);
             ctx.rotate(-0.5);
-            ctx.font = '500 7px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(isActive ? TC.label : TC.labelDim, isActive ? 0.7 : 0.4);
+            ctx.font = '500 9px IBM Plex Mono, monospace';
+            ctx.fillStyle = rgb(isActive ? TC.label : TC.labelDim, isActive ? 0.9 : 0.7);
             ctx.textAlign = 'left';
             var shortName = st.name.length > 12 ? st.name.substring(0, 11) + '\u2026' : st.name;
             ctx.fillText(shortName, 0, 0);
             ctx.restore();
 
             // Offset value
-            ctx.font = '500 7px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(TC.label, 0.5); ctx.textAlign = 'center';
+            ctx.font = '500 9px IBM Plex Mono, monospace';
+            ctx.fillStyle = rgb(TC.label, 0.75); ctx.textAlign = 'center';
             var valY = offsetPx > 0 ? barTop - 5 : barTop + barHeight + 10;
             ctx.fillText(st.offset, x + barW/2, valY);
         }
 
         // Scale labels
-        ctx.font = '400 7px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(TC.labelDim, 0.3); ctx.textAlign = 'right';
+        ctx.font = '400 9px IBM Plex Mono, monospace';
+        ctx.fillStyle = rgb(TC.labelDim, 0.7); ctx.textAlign = 'right';
         ctx.fillText('+' + formatMicro(maxOff), pad - 4, pad + 8);
         ctx.fillText('-' + formatMicro(maxOff), pad - 4, pad + gh);
         ctx.fillText('0', pad - 4, baseY + 3);
 
         ctx.textAlign = 'left';
-        ctx.fillStyle = rgb(TC.label, 0.4);
+        ctx.fillStyle = rgb(TC.label, 0.7);
         ctx.font = '500 8px IBM Plex Mono, monospace';
         ctx.fillText('SOURCE OFFSETS  (\u00b1 std dev shaded)', pad, pad - 8);
     }
@@ -464,7 +464,7 @@ var VizEngine = (function() {
 
         if (freqHistory.length < 2) {
             ctx.font = '500 10px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(TC.label, 0.3); ctx.textAlign = 'center';
+            ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'center';
             ctx.fillText('COLLECTING FREQUENCY DATA...', w/2, h/2);
             return;
         }
@@ -500,12 +500,12 @@ var VizEngine = (function() {
         drawGlowDot(ctx, lastX, ly, TC.center, TC);
 
         ctx.font = '500 8px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(TC.label, 0.4); ctx.textAlign = 'left';
+        ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'left';
         ctx.fillText('FREQUENCY DRIFT (ppm)', pad, pad - 8);
         ctx.textAlign = 'right';
         ctx.fillStyle = rgb(TC.center, 0.7);
         ctx.fillText('NOW: ' + last.v.toFixed(3) + ' ppm', pad + gw, pad - 8);
-        ctx.fillStyle = rgb(TC.labelDim, 0.3);
+        ctx.fillStyle = rgb(TC.labelDim, 0.7);
         ctx.fillText((midV + range/2).toFixed(3) + ' ppm', pad - 4, pad + 8);
         ctx.fillText((midV - range/2).toFixed(3) + ' ppm', pad - 4, pad + gh);
     }
@@ -524,7 +524,7 @@ var VizEngine = (function() {
 
         // Header
         ctx.font = '500 8px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(TC.label, 0.4); ctx.textAlign = 'left';
+        ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'left';
         ctx.fillText('SOURCE', pad, pad + 10);
         ctx.textAlign = 'center';
         for (var b = 0; b < 8; b++) {
@@ -542,7 +542,7 @@ var VizEngine = (function() {
 
             // Source name
             ctx.font = (isActive ? '600 ' : '400 ') + '9px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(isActive ? TC.locked : TC.labelDim, isActive ? 0.8 : 0.5);
+            ctx.fillStyle = rgb(isActive ? TC.locked : TC.labelDim, isActive ? 0.9 : 0.7);
             ctx.textAlign = 'left';
             var name = src.name.length > 14 ? src.name.substring(0, 13) + '\u2026' : src.name;
             ctx.fillText(src.state + ' ' + name, pad, y + rowH/2 + 3);
@@ -617,23 +617,23 @@ var VizEngine = (function() {
 
         // Legend
         ctx.font = '500 8px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(TC.label, 0.4); ctx.textAlign = 'left';
+        ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'left';
         ctx.fillText('ROOT METRICS', pad, pad - 8);
 
         // Legend dots
         ctx.beginPath(); ctx.arc(pad + gw - 120, pad - 11, 3, 0, Math.PI*2);
         ctx.fillStyle = rgb(TC.locked, 0.8); ctx.fill();
-        ctx.fillStyle = rgb(TC.label, 0.5);
+        ctx.fillStyle = rgb(TC.label, 0.75);
         ctx.fillText('Delay', pad + gw - 114, pad - 8);
 
         ctx.beginPath(); ctx.arc(pad + gw - 55, pad - 11, 3, 0, Math.PI*2);
         ctx.fillStyle = rgb(TC.center, 0.8); ctx.fill();
-        ctx.fillStyle = rgb(TC.label, 0.5);
+        ctx.fillStyle = rgb(TC.label, 0.75);
         ctx.fillText('Dispersion', pad + gw - 49, pad - 8);
 
         // Scale
-        ctx.font = '400 7px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(TC.labelDim, 0.3); ctx.textAlign = 'right';
+        ctx.font = '400 9px IBM Plex Mono, monospace';
+        ctx.fillStyle = rgb(TC.labelDim, 0.7); ctx.textAlign = 'right';
         ctx.fillText(formatMicro(maxVal), pad - 4, pad + 8);
         ctx.fillText('0', pad - 4, pad + gh);
     }
@@ -690,7 +690,7 @@ var VizEngine = (function() {
 
         var dirs = ['N','NE','E','SE','S','SW','W','NW'];
         ctx.font = '400 8px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(TC.labelDim, 0.3); ctx.textAlign = 'center';
+        ctx.fillStyle = rgb(TC.labelDim, 0.7); ctx.textAlign = 'center';
         for (var i = 0; i < 8; i++) {
             var x = pad + (i/8) * (w-pad*2);
             ctx.fillText(dirs[i], x, horizonY + 15);
@@ -702,8 +702,8 @@ var VizEngine = (function() {
             ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(w-pad,y);
             ctx.strokeStyle = rgb(TC.wire, 0.04); ctx.lineWidth = 0.5;
             ctx.setLineDash([2,6]); ctx.stroke(); ctx.setLineDash([]);
-            ctx.font = '400 7px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(TC.labelDim, 0.2);
+            ctx.font = '400 9px IBM Plex Mono, monospace';
+            ctx.fillStyle = rgb(TC.labelDim, 0.7);
             ctx.textAlign = 'right'; ctx.fillText(el+'\u00b0', pad-4, y+3);
         }
         for (var i = 0; i < sats.length; i++) {
@@ -767,8 +767,8 @@ var VizEngine = (function() {
 
             // Axis label at outer edge (centered, not default left-aligned)
             var lx = cx + (maxR+15)*Math.cos(a), ly = cy + (maxR+15)*Math.sin(a);
-            ctx.font = (s.used?'600 ':'400 ')+'7px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(s.used?TC.label:TC.labelDim, s.used?0.6:0.3);
+            ctx.font = (s.used?'600 ':'400 ')+'9px IBM Plex Mono, monospace';
+            ctx.fillStyle = rgb(s.used?TC.label:TC.labelDim, s.used?0.9:0.7);
             ctx.textAlign = 'center'; ctx.fillText(s.PRN, lx, ly+3);
         }
     }
@@ -791,7 +791,7 @@ var VizEngine = (function() {
 
         var tracking = (ntpData && ntpData.tracking) || {};
         if (tracking.stratum != null) {
-            ctx.font = '400 7px IBM Plex Mono, monospace';
+            ctx.font = '400 9px IBM Plex Mono, monospace';
             ctx.fillStyle = rgb(TC.center, 0.5);
             ctx.fillText('STR ' + tracking.stratum, cx, cy + 22);
         }
@@ -802,8 +802,8 @@ var VizEngine = (function() {
             ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
             ctx.strokeStyle = rgb(TC.wire, 0.06); ctx.lineWidth = 0.5;
             ctx.setLineDash([3,6]); ctx.stroke(); ctx.setLineDash([]);
-            ctx.font = '400 7px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(TC.labelDim, 0.2); ctx.textAlign = 'left';
+            ctx.font = '400 9px IBM Plex Mono, monospace';
+            ctx.fillStyle = rgb(TC.labelDim, 0.7); ctx.textAlign = 'left';
             ctx.fillText('STR '+s, cx+r+5, cy);
         }
 
@@ -844,7 +844,7 @@ var VizEngine = (function() {
                 var sname = src.name.length > 16 ? src.name.substring(0,15)+'\u2026' : src.name;
                 ctx.fillText(sname, nx, ny+18);
                 // State badge
-                ctx.font = '600 7px IBM Plex Mono, monospace';
+                ctx.font = '600 9px IBM Plex Mono, monospace';
                 ctx.fillText(src.state, nx, ny + 3);
             }
         }
@@ -870,7 +870,7 @@ var VizEngine = (function() {
 
         // Header
         ctx.font = '500 8px IBM Plex Mono, monospace';
-        ctx.fillStyle = rgb(TC.label, 0.4); ctx.textAlign = 'left';
+        ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'left';
         ctx.fillText('SOURCE JITTER (std dev)', pad, pad + 10);
 
         for (var i = 0; i < stats.length; i++) {
@@ -903,12 +903,12 @@ var VizEngine = (function() {
 
             // Value label
             ctx.font = '500 8px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(TC.label, 0.6); ctx.textAlign = 'left';
+            ctx.fillStyle = rgb(TC.label, 0.8); ctx.textAlign = 'left';
             ctx.fillText(st.std_dev, bx + barW + 8, y + rowH/2 + 3);
 
             // Sample count
-            ctx.font = '400 7px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(TC.labelDim, 0.3); ctx.textAlign = 'right';
+            ctx.font = '400 9px IBM Plex Mono, monospace';
+            ctx.fillStyle = rgb(TC.labelDim, 0.7); ctx.textAlign = 'right';
             ctx.fillText(st.np + ' samples', w - pad, y + rowH/2 + 3);
         }
     }
