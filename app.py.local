@@ -1,11 +1,11 @@
-import os, json, re
+import os, json, subprocess, re
 from flask import Flask, render_template, jsonify, request
 import paramiko
 from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-APP_VERSION = "v0.2.5"
+APP_VERSION = "v0.2.4"
 
 # --- Directory and File Paths ---
 DATA_DIR = '/app/data'
@@ -60,10 +60,23 @@ def load_config():
         try:
             with open(CONFIG_FILE, 'r') as f: return json.load(f)
         except Exception: pass
-    return {"mode": "remote", "host": "", "user": "ubuntu", "password": "", "auth": "key"}
+    return {"mode": "local", "host": "", "user": "ubuntu", "password": "", "auth": "key"}
 
 def save_config(config):
     with open(CONFIG_FILE, 'w') as f: json.dump(config, f)
+
+def run_commands_local(cmds):
+    results = []
+    for cmd in cmds:
+        try:
+            proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
+            if proc.returncode != 0:
+                results.append(f"Error: {proc.stdout.strip()}")
+            else:
+                results.append(proc.stdout)
+        except Exception as e:
+            results.append(f"Error: {str(e)}")
+    return results
 
 def run_commands_remote(cmds, config):
     ssh = paramiko.SSHClient()
@@ -259,7 +272,10 @@ def get_ntp():
     config = load_config()
     cmds = ["chronyc tracking", "chronyc sources", "chronyc sourcestats"]
 
-    outs = run_commands_remote(cmds, config)
+    if config.get("mode") == "local":
+        outs = run_commands_local(cmds)
+    else:
+        outs = run_commands_remote(cmds, config)
 
     tracking_out = outs[0]
     sources_out = outs[1]
@@ -306,7 +322,10 @@ def get_gps():
     config = load_config()
     cmd = ["timeout 3 gpspipe -w -n 12"]
 
-    gps_out = run_commands_remote(cmd, config)[0]
+    if config.get("mode") == "local":
+        gps_out = run_commands_local(cmd)[0]
+    else:
+        gps_out = run_commands_remote(cmd, config)[0]
 
     satellites = []
     gps_time = "Waiting for lock..."
