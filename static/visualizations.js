@@ -48,7 +48,7 @@ var VizEngine = (function() {
 
     // Plot a time-series line from a data array with current-value dot
     // dataFn(entry, index) returns the Y value; returns the last plotted {x, y} or null
-    function plotTimeSeries(ctx, data, maxLen, pad, gw, gh, rangeFn, dataFn, color, TC) {
+    function plotTimeSeries(ctx, data, maxLen, pad, gw, gh, rangeFn, dataFn, color) {
         ctx.beginPath();
         var lastPt = null;
         var hasData = false;
@@ -68,7 +68,7 @@ var VizEngine = (function() {
     }
 
     // Draw a glowing dot at a point (used for current-value markers on time series)
-    function drawGlowDot(ctx, x, y, color, TC) {
+    function drawGlowDot(ctx, x, y, color) {
         ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
         ctx.fillStyle = rgb(color, 1); ctx.fill();
         var pg = ctx.createRadialGradient(x, y, 0, x, y, 12);
@@ -204,10 +204,12 @@ var VizEngine = (function() {
             ctx.setLineDash([2,4]); ctx.stroke(); ctx.setLineDash([]);
         }
 
+        var satPositions = [];
         for (var i = 0; i < sats.length; i++) {
             var s = sats[i];
             var elR = r * (90 - s.el) / 90, azR = s.az * Math.PI / 180;
             var sx = cx + elR * Math.sin(azR), sy = cy - elR * Math.cos(azR);
+            satPositions.push({ sx: sx, sy: sy, sat: s, idx: i });
             var intensity = clamp(s.ss / 50, 0, 1), blobR = 20 + intensity * 30;
             var hg = ctx.createRadialGradient(sx, sy, 0, sx, sy, blobR);
             var col = s.used ? TC.locked : TC.dim;
@@ -216,11 +218,9 @@ var VizEngine = (function() {
             hg.addColorStop(1, 'transparent');
             ctx.fillStyle = hg; ctx.fillRect(sx - blobR, sy - blobR, blobR*2, blobR*2);
         }
-        for (var i = 0; i < sats.length; i++) {
-            var s = sats[i];
-            var elR = r * (90 - s.el) / 90, azR = s.az * Math.PI / 180;
-            var sx = cx + elR * Math.sin(azR), sy = cy - elR * Math.cos(azR);
-            drawSatDot(ctx, sx, sy, s, t, i, TC, { labelOffsetX: 7 });
+        for (var i = 0; i < satPositions.length; i++) {
+            var p = satPositions[i];
+            drawSatDot(ctx, p.sx, p.sy, p.sat, t, p.idx, TC, { labelOffsetX: 7 });
         }
         ctx.font = '500 10px IBM Plex Mono, monospace';
         ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'center';
@@ -259,7 +259,7 @@ var VizEngine = (function() {
         // Offset line
         function offsetToY(val) { return cy - (val / range) * (gh / 2); }
         var lastPt = plotTimeSeries(ctx, data, MAX_TRACKING, pad, gw, gh, offsetToY,
-            function(d) { return d.offset || 0; }, TC.locked, TC);
+            function(d) { return d.offset || 0; }, TC.locked);
 
         // RMS band if available
         if (data[0].rms != null) {
@@ -278,7 +278,7 @@ var VizEngine = (function() {
         }
 
         // Current value marker
-        if (lastPt) drawGlowDot(ctx, lastPt.x, lastPt.y, TC.center, TC);
+        if (lastPt) drawGlowDot(ctx, lastPt.x, lastPt.y, TC.center);
         var last = data[data.length - 1];
 
         // Labels
@@ -497,7 +497,7 @@ var VizEngine = (function() {
         // Current dot
         var last = freqHistory[freqHistory.length - 1];
         var ly = pad + gh/2 - ((last.v - midV) / range) * gh;
-        drawGlowDot(ctx, lastX, ly, TC.center, TC);
+        drawGlowDot(ctx, lastX, ly, TC.center);
 
         ctx.font = '500 8px IBM Plex Mono, monospace';
         ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'left';
@@ -535,7 +535,7 @@ var VizEngine = (function() {
         for (var i = 0; i < sources.length; i++) {
             var src = sources[i];
             var y = pad + 20 + i * rowH;
-            var isActive = src.state && (src.state.includes('*') || src.state.includes('+'));
+            var isActive = isSourceActive(src.name, sources);
 
             // Parse reach (octal string to number)
             var reach = parseInt(src.reach, 8) || 0;
@@ -609,11 +609,11 @@ var VizEngine = (function() {
 
         // Root delay line
         plotTimeSeries(ctx, trackingHistory, MAX_TRACKING, pad, gw, gh, rootToY,
-            function(d) { return d.rootDelay; }, TC.locked, TC);
+            function(d) { return d.rootDelay; }, TC.locked);
 
         // Root dispersion line
         plotTimeSeries(ctx, trackingHistory, MAX_TRACKING, pad, gw, gh, rootToY,
-            function(d) { return d.rootDisp; }, TC.center, TC);
+            function(d) { return d.rootDisp; }, TC.center);
 
         // Legend
         ctx.font = '500 8px IBM Plex Mono, monospace';
@@ -815,7 +815,7 @@ var VizEngine = (function() {
                 var r = Math.min(strat, maxStrat) * 55;
                 var angle = i * angleStep - Math.PI/2 + Math.sin(t*0.0003)*0.1;
                 var nx = cx + r*Math.cos(angle), ny = cy + r*Math.sin(angle);
-                var isActive = src.state && (src.state.includes('*') || src.state.includes('+'));
+                var isActive = isSourceActive(src.name, sources);
 
                 ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(nx,ny);
                 ctx.strokeStyle = rgb(isActive?TC.locked:TC.dim, isActive?0.3:0.08);
