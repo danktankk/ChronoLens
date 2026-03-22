@@ -1,4 +1,4 @@
-// ── NTP Ground Station Dashboard v0.0.7 ──
+// ── ChronoLens Dashboard v0.2.4 ──
 // Theme-aware canvas globe + radar
 
 // ═══════════════════════════════════════════
@@ -81,7 +81,7 @@ function setTheme(name) {
     currentTheme = name;
     TC = THEMES[name];
     document.documentElement.setAttribute('data-theme', name);
-    localStorage.setItem('ntp-theme', name);
+    localStorage.setItem('chronolens-theme', name);
 
     // Update swatch active states
     var swatches = document.querySelectorAll('.theme-swatch');
@@ -92,7 +92,7 @@ function setTheme(name) {
 
 // Init theme from localStorage
 (function() {
-    var saved = localStorage.getItem('ntp-theme');
+    var saved = localStorage.getItem('chronolens-theme');
     if (saved && THEMES[saved]) setTheme(saved);
 })();
 
@@ -179,7 +179,7 @@ async function loadUI() {
         document.getElementById('receiverLon').value = conf.receiver_lon || '';
         // Load auto-cycle setting
         var cycleEl = document.getElementById('cycleInterval');
-        if (cycleEl) cycleEl.value = parseInt(localStorage.getItem('ntp-cycle-interval')) || 0;
+        if (cycleEl) cycleEl.value = parseInt(localStorage.getItem('chronolens-cycle-interval')) || 0;
     } catch (e) { console.error('Config load error', e); }
 }
 
@@ -497,8 +497,8 @@ function drawRadar(ctx, cw, ch, t) {
 // ═══════════════════════════════════════════
 // 8. ANIMATION LOOP + VIZ PICKER
 // ═══════════════════════════════════════════
-var activeVizLeft = localStorage.getItem('ntp-viz-left') || 'globe';
-var activeVizRight = localStorage.getItem('ntp-viz-right') || 'radar';
+var activeVizLeft = localStorage.getItem('chronolens-viz-left') || 'globe';
+var activeVizRight = localStorage.getItem('chronolens-viz-right') || 'radar';
 var lastNtpData = {};
 
 // Planet Earth — show/hide dedicated COBE canvases
@@ -597,13 +597,13 @@ function closeVizPicker() {
 function selectViz(panel, vizKey) {
     if (panel === 'left') {
         activeVizLeft = vizKey;
-        localStorage.setItem('ntp-viz-left', vizKey);
+        localStorage.setItem('chronolens-viz-left', vizKey);
         document.getElementById('vizLeftTitle').textContent = VizEngine.registry[vizKey].name;
         var strip = document.getElementById('satCountStrip');
         if (strip) strip.style.display = (vizKey === 'globe' || vizKey === 'radar') ? 'flex' : 'none';
     } else {
         activeVizRight = vizKey;
-        localStorage.setItem('ntp-viz-right', vizKey);
+        localStorage.setItem('chronolens-viz-right', vizKey);
         document.getElementById('vizRightTitle').textContent = VizEngine.registry[vizKey].name;
     }
     closeVizPicker();
@@ -725,7 +725,7 @@ setInterval(function() {
 // 11. AUTO-CYCLE
 // ═══════════════════════════════════════════
 var autoCycleTimer = null;
-var autoCycleInterval = parseInt(localStorage.getItem('ntp-cycle-interval')) || 0; // 0 = off
+var autoCycleInterval = parseInt(localStorage.getItem('chronolens-cycle-interval')) || 0; // 0 = off
 
 function getVizKeys() { return Object.keys(VizEngine.registry); }
 
@@ -761,7 +761,7 @@ function stopAutoCycle() {
 
 function setAutoCycle(seconds) {
     autoCycleInterval = seconds;
-    localStorage.setItem('ntp-cycle-interval', seconds);
+    localStorage.setItem('chronolens-cycle-interval', seconds);
     startAutoCycle();
     // Update UI
     var sel = document.getElementById('cycleInterval');

@@ -1,0 +1,10 @@
+*.bak
+*.local
+*.slim
+data/
+ssh/
+.git/
+.gitignore
+README.md
+UPDATE.md
+screenshots/
