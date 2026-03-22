@@ -3,10 +3,6 @@ FROM python:3.11-slim AS builder
 RUN apt-get update && apt-get install -y wget unzip && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
-# Download Tailwind for offline viewing
-RUN mkdir -p /app/static && wget -q https://cdn.tailwindcss.com/ -O /app/static/tailwindcss.js
-
 # Self-host CesiumJS (eliminates ~30MB CDN load on every page visit)
 RUN mkdir -p /tmp/cesium && \
     wget -q https://github.com/CesiumGS/cesium/releases/download/1.124/Cesium-1.124.zip -O /tmp/cesium.zip && \

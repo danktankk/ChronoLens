@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NTP Ground Station — Satellite Tracker</title>
+    <title>ChronoLens — Satellite Tracker</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="/static/cesium/Cesium.js"></script>
@@ -20,7 +20,7 @@
             color: #e2e8f0;
             font-family: 'IBM Plex Mono', monospace;
             overflow: hidden;
-            height: 100vh; /* fallback for older browsers */
+            height: 100vh;
             height: 100dvh;
             position: fixed;
             width: 100%;
@@ -38,6 +38,11 @@
             position: relative;
             z-index: 1000;
         }
+        /* Kiosk mode: hide nav bar */
+        body.kiosk .nav-bar { display: none; }
+        body.kiosk #cesiumContainer { height: 100vh; height: 100dvh; }
+        body.kiosk .loading-overlay { top: 0; }
+
         .nav-brand {
             font-family: 'Chakra Petch', sans-serif;
             font-size: 0.85rem;
@@ -144,13 +149,13 @@
             text-transform: uppercase;
             color: #22d3ee;
             margin-bottom: 0.5rem;
+            animation: pulse 1.5s ease-in-out infinite;
         }
         .loading-sub {
             font-size: 0.7rem;
             color: #8a9ab0;
         }
         @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
-        .loading-text { animation: pulse 1.5s ease-in-out infinite; }
 
         /* Legend */
         .legend {
@@ -257,6 +262,21 @@
             border-color: #22d3ee;
             box-shadow: 0 0 12px rgba(34, 211, 238, 0.3);
         }
+        /* Fly-to-receiver button */
+        .zoom-btn.flyto {
+            color: #f5a623;
+            border-color: rgba(245, 166, 35, 0.3);
+            font-size: 18px;
+        }
+        .zoom-btn.flyto:hover, .zoom-btn.flyto.active {
+            background: rgba(245, 166, 35, 0.15);
+            border-color: #f5a623;
+            box-shadow: 0 0 12px rgba(245, 166, 35, 0.3);
+        }
+        .zoom-btn.flyto.zoomed-in {
+            color: #22d3ee;
+            border-color: rgba(34, 211, 238, 0.3);
+        }
 
         /* ── MOBILE: info panel collapsible ── */
         .info-toggle {
@@ -332,7 +352,7 @@
 </head>
 <body>
     <nav class="nav-bar">
-        <span class="nav-brand">NTP Ground Station</span>
+        <span class="nav-brand">ChronoLens</span>
         <a href="/" class="nav-tab">Dashboard</a>
         <a href="/satellite" class="nav-tab active">Satellite Tracker</a>
         <div class="nav-right">
@@ -384,6 +404,7 @@
 
     <!-- Navigation disk -->
     <div class="zoom-strip">
+        <button class="zoom-btn flyto" id="flyToBtn" data-action="flyto" aria-label="Fly to receiver" title="Fly to receiver">&#9906;</button>
         <button class="zoom-btn" data-action="zoomin" aria-label="Zoom in">+</button>
         <button class="zoom-btn" data-action="zoomout" aria-label="Zoom out">&minus;</button>
     </div>
@@ -393,26 +414,39 @@
         <button class="nav-btn down" data-action="down" aria-label="Pan down">&#9660;</button>
         <button class="nav-btn left" data-action="left" aria-label="Pan left">&#9664;</button>
         <button class="nav-btn right" data-action="right" aria-label="Pan right">&#9654;</button>
-        <button class="nav-btn home" data-action="home" aria-label="Fly to receiver">&#8962;</button>
+        <button class="nav-btn home" data-action="home" aria-label="Reset view">&#8962;</button>
     </div>
 
     <script>
+        // ── KIOSK MODE ──
+        if (new URLSearchParams(window.location.search).has('kiosk')) {
+            document.body.classList.add('kiosk');
+        }
+
         // ── CONFIG ──
         Cesium.Ion.defaultAccessToken = '{{ cesium_token }}';
 
-        // Receiver location (from config)
         var RECEIVER_LAT = {{ receiver_lat }};
         var RECEIVER_LON = {{ receiver_lon }};
         var RECEIVER_ALT = 10;
 
-        // ── INIT CESIUM ──
+        // ── CACHED COLORS (avoid repeated fromCssColorString in hot loops) ──
+        var C_LOCKED      = Cesium.Color.fromCssColorString('#34d399');
+        var C_LOCKED_A5   = C_LOCKED.withAlpha(0.5);
+        var C_VISIBLE     = Cesium.Color.fromCssColorString('#94a3b8');
+        var C_HIDDEN      = Cesium.Color.fromCssColorString('#334155');
+        var C_RECEIVER    = Cesium.Color.fromCssColorString('#f5a623');
+        var C_ORBIT_LOCK  = Cesium.Color.fromCssColorString('#22d3ee').withAlpha(0.5);
+        var C_ORBIT_VIS   = Cesium.Color.fromCssColorString('#8a9ab0').withAlpha(0.25);
+        var C_BG          = Cesium.Color.fromCssColorString('#04080f');
+
+        // ── INIT CESIUM (performance-tuned) ──
         var viewer = new Cesium.Viewer('cesiumContainer', {
-            terrain: Cesium.Terrain.fromWorldTerrain(),
             baseLayerPicker: false,
             geocoder: false,
             homeButton: false,
             sceneModePicker: false,
-            selectionIndicator: true,
+            selectionIndicator: false,
             timeline: false,
             animation: false,
             navigationHelpButton: false,
@@ -420,28 +454,34 @@
             infoBox: true,
             shadows: false,
             skyAtmosphere: new Cesium.SkyAtmosphere(),
+            msaaSamples: 1,
+            requestRenderMode: true,
+            maximumRenderTimeChange: Infinity,
         });
 
-        // Dark sky
-        viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#04080f');
-        viewer.scene.globe.enableLighting = true;
-        viewer.scene.fog.enabled = true;
-        viewer.scene.globe.atmosphereLightIntensity = 8.0;
+        var scene = viewer.scene;
+        scene.backgroundColor = C_BG;
+        scene.globe.enableLighting = true;
+        scene.fog.enabled = false;
+        scene.globe.atmosphereLightIntensity = 8.0;
+        scene.globe.maximumScreenSpaceError = 4;
+        scene.globe.tileCacheSize = 50;
+        scene.globe.showGroundAtmosphere = true;
 
-        // Receiver marker with glow ring
+        // Receiver marker
         viewer.entities.add({
             position: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, RECEIVER_ALT),
             point: {
                 pixelSize: 14,
-                color: Cesium.Color.fromCssColorString('#f5a623'),
-                outlineColor: Cesium.Color.fromCssColorString('#f5a623').withAlpha(0.3),
+                color: C_RECEIVER,
+                outlineColor: C_RECEIVER.withAlpha(0.3),
                 outlineWidth: 6,
                 scaleByDistance: new Cesium.NearFarScalar(1e5, 2, 5e7, 0.8),
             },
             label: {
                 text: 'GPS RECEIVER',
                 font: 'bold 14px IBM Plex Mono',
-                fillColor: Cesium.Color.fromCssColorString('#f5a623'),
+                fillColor: C_RECEIVER,
                 outlineColor: Cesium.Color.BLACK,
                 outlineWidth: 3,
                 style: Cesium.LabelStyle.FILL_AND_OUTLINE,
@@ -452,31 +492,27 @@
             ellipse: {
                 semiMinorAxis: 200000,
                 semiMajorAxis: 200000,
-                material: Cesium.Color.fromCssColorString('#f5a623').withAlpha(0.08),
+                material: C_RECEIVER.withAlpha(0.08),
                 outline: true,
-                outlineColor: Cesium.Color.fromCssColorString('#f5a623').withAlpha(0.3),
+                outlineColor: C_RECEIVER.withAlpha(0.3),
                 outlineWidth: 2,
                 height: 0,
             }
         });
 
-        // Start centered on Earth, looking straight at it
+        // Start centered on Earth
         viewer.camera.setView({
             destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 45000000),
-            orientation: {
-                heading: 0,
-                pitch: Cesium.Math.toRadians(-90),
-                roll: 0
-            }
+            orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 }
         });
 
-        // Slow auto-rotation — orbit the Earth
+        // Auto-rotation
         var autoRotate = true;
         viewer.clock.onTick.addEventListener(function() {
             if (!autoRotate) return;
             viewer.camera.rotate(Cesium.Cartesian3.UNIT_Z, -0.001);
+            viewer.scene.requestRender();
         });
-        // Stop auto-rotate when user interacts, resume after 10s idle
         var idleTimer = null;
         function pauseAutoRotate() {
             autoRotate = false;
@@ -486,41 +522,33 @@
         var handler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
         handler.setInputAction(pauseAutoRotate, Cesium.ScreenSpaceEventType.LEFT_DOWN);
         handler.setInputAction(pauseAutoRotate, Cesium.ScreenSpaceEventType.WHEEL);
-        // Touch support for auto-rotate pause
         handler.setInputAction(pauseAutoRotate, Cesium.ScreenSpaceEventType.PINCH_START);
 
         // ── TLE LOADING ──
-        var tleData = {}; // PRN -> { name, tle1, tle2, satrec }
-        var satEntities = {}; // PRN -> Cesium.Entity
+        var tleData = {};
+        var satEntities = {};
 
         async function loadTLEs() {
             try {
-                // GPS constellation TLEs from CelesTrak
                 var resp = await fetch('https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle');
                 var text = await resp.text();
                 var lines = text.trim().split('\n');
-
                 for (var i = 0; i < lines.length - 2; i += 3) {
                     var name = lines[i].trim();
                     var tle1 = lines[i + 1].trim();
                     var tle2 = lines[i + 2].trim();
-
-                    // Extract PRN from name (e.g., "GPS BIIR-2  (PRN 13)")
                     var prnMatch = name.match(/PRN\s*(\d+)/);
                     var prn = prnMatch ? parseInt(prnMatch[1]) : null;
-
                     if (prn && tle1.startsWith('1 ') && tle2.startsWith('2 ')) {
-                        var satrec = satellite.twoline2satrec(tle1, tle2);
-                        tleData[prn] = { name: name, tle1: tle1, tle2: tle2, satrec: satrec };
+                        tleData[prn] = { name: name, tle1: tle1, tle2: tle2, satrec: satellite.twoline2satrec(tle1, tle2) };
                     }
                 }
-                console.log('Loaded TLEs for', Object.keys(tleData).length, 'GPS satellites');
             } catch (e) {
                 console.error('TLE load failed:', e);
             }
         }
 
-        // ── SATELLITE POSITION COMPUTATION ──
+        // ── SATELLITE POSITION ──
         function getSatPosition(satrec, date) {
             var posVel = satellite.propagate(satrec, date);
             if (!posVel.position) return null;
@@ -529,7 +557,7 @@
             return {
                 lat: satellite.degreesLat(geo.latitude),
                 lon: satellite.degreesLong(geo.longitude),
-                alt: geo.height * 350 // compress altitude to keep sats closer to globe
+                alt: geo.height * 350
             };
         }
 
@@ -543,23 +571,19 @@
             return positions;
         }
 
-        // ── CREATE/UPDATE SATELLITE ENTITIES ──
-        var gpsData = {}; // latest from /api/gps
+        // ── CREATE/UPDATE SATELLITES ──
+        var gpsData = {};
 
         function updateSatellites() {
             var now = new Date();
             var receiverSats = gpsData.satellites || [];
-
-            // Build lookup of receiver-detected satellites
             var detected = {};
             for (var i = 0; i < receiverSats.length; i++) {
-                var s = receiverSats[i];
-                detected[s.PRN] = s;
+                detected[receiverSats[i].PRN] = receiverSats[i];
             }
 
             var locked = 0, total = 0, totalSnr = 0;
 
-            // Update all TLE satellites
             for (var prn in tleData) {
                 var tle = tleData[prn];
                 var pos = getSatPosition(tle.satrec, now);
@@ -574,24 +598,21 @@
                 if (isLocked) locked++;
                 if (det) totalSnr += snr;
 
-                var color = isLocked
-                    ? Cesium.Color.fromCssColorString('#34d399')
-                    : isVisible
-                        ? Cesium.Color.fromCssColorString('#94a3b8')
-                        : Cesium.Color.fromCssColorString('#334155');
-
-                var size = isLocked ? 16 : isVisible ? 10 : 5;
+                var color, size;
+                if (isLocked) { color = C_LOCKED; size = 16; }
+                else if (isVisible) { color = C_VISIBLE; size = 10; }
+                else { color = C_HIDDEN; size = 5; }
 
                 if (!satEntities[prn]) {
-                    // Solid orbit path for locked/visible sats only
-                    var orbitPositions = (isLocked || isVisible) ? getOrbitPath(tle.satrec, now, 720, 200) : [];
+                    // Orbit paths: 100 steps (down from 200), simple color material (no glow)
+                    var orbitPositions = (isLocked || isVisible) ? getOrbitPath(tle.satrec, now, 720, 100) : [];
 
                     satEntities[prn] = viewer.entities.add({
                         position: Cesium.Cartesian3.fromDegrees(pos.lon, pos.lat, pos.alt),
                         point: {
                             pixelSize: size,
                             color: color,
-                            outlineColor: isLocked ? Cesium.Color.fromCssColorString('#34d399').withAlpha(0.5) : Cesium.Color.TRANSPARENT,
+                            outlineColor: isLocked ? C_LOCKED_A5 : Cesium.Color.TRANSPARENT,
                             outlineWidth: isLocked ? 4 : 0,
                             scaleByDistance: new Cesium.NearFarScalar(1e6, 1.5, 5e7, 0.6),
                         },
@@ -611,30 +632,24 @@
                         polyline: orbitPositions.length > 0 ? {
                             positions: orbitPositions,
                             width: isLocked ? 2 : 1,
-                            material: new Cesium.PolylineGlowMaterialProperty({
-                                glowPower: 0.2,
-                                color: isLocked
-                                    ? Cesium.Color.fromCssColorString('#22d3ee').withAlpha(0.5)
-                                    : Cesium.Color.fromCssColorString('#8a9ab0').withAlpha(0.25)
-                            }),
+                            material: isLocked ? C_ORBIT_LOCK : C_ORBIT_VIS,
                         } : undefined,
                         description: '<table style="font-family:IBM Plex Mono,monospace;font-size:12px;">' +
                             '<tr><td style="color:#888;padding:2px 8px;">Name</td><td>' + tle.name + '</td></tr>' +
                             '<tr><td style="color:#888;padding:2px 8px;">PRN</td><td>' + prn + '</td></tr>' +
                             '<tr><td style="color:#888;padding:2px 8px;">Status</td><td style="color:' + (isLocked ? '#34d399' : isVisible ? '#94a3b8' : '#8494a7') + ';">' + (isLocked ? 'LOCKED' : isVisible ? 'Visible' : 'Below horizon') + '</td></tr>' +
                             (det ? '<tr><td style="color:#888;padding:2px 8px;">SNR</td><td>' + snr + ' dB</td></tr>' +
-                            '<tr><td style="color:#888;padding:2px 8px;">Elevation</td><td>' + (det.el || 0) + '°</td></tr>' +
-                            '<tr><td style="color:#888;padding:2px 8px;">Azimuth</td><td>' + (det.az || 0) + '°</td></tr>' : '') +
+                            '<tr><td style="color:#888;padding:2px 8px;">Elevation</td><td>' + (det.el || 0) + '</td></tr>' +
+                            '<tr><td style="color:#888;padding:2px 8px;">Azimuth</td><td>' + (det.az || 0) + '</td></tr>' : '') +
                             '<tr><td style="color:#888;padding:2px 8px;">Altitude</td><td>' + Math.round(pos.alt / 1000) + ' km</td></tr>' +
                             '</table>'
                     });
                 } else {
-                    // Update existing entity
                     var ent = satEntities[prn];
                     ent.position = Cesium.Cartesian3.fromDegrees(pos.lon, pos.lat, pos.alt);
                     ent.point.pixelSize = size;
                     ent.point.color = color;
-                    ent.point.outlineColor = isLocked ? Cesium.Color.fromCssColorString('#34d399').withAlpha(0.5) : Cesium.Color.TRANSPARENT;
+                    ent.point.outlineColor = isLocked ? C_LOCKED_A5 : Cesium.Color.TRANSPARENT;
                     ent.point.outlineWidth = isLocked ? 4 : 0;
                     ent.label.show = isVisible || isLocked;
                     ent.label.text = 'PRN ' + prn + (det ? '  ' + snr + 'dB' : '');
@@ -643,15 +658,16 @@
                 }
             }
 
-            // Update info panel
             document.getElementById('infoTotal').textContent = total + ' detected / ' + Object.keys(tleData).length + ' in constellation';
             document.getElementById('infoLocked').textContent = locked + ' satellites';
-            document.getElementById('infoSnr').textContent = total > 0 ? (totalSnr / total).toFixed(1) + ' dB' : '—';
-            document.getElementById('infoReceiver').textContent = Math.abs(RECEIVER_LAT).toFixed(2) + '°' + (RECEIVER_LAT >= 0 ? 'N' : 'S') + ', ' + Math.abs(RECEIVER_LON).toFixed(2) + '°' + (RECEIVER_LON >= 0 ? 'E' : 'W');
+            document.getElementById('infoSnr').textContent = total > 0 ? (totalSnr / total).toFixed(1) + ' dB' : '\u2014';
+            document.getElementById('infoReceiver').textContent = Math.abs(RECEIVER_LAT).toFixed(2) + '\u00b0' + (RECEIVER_LAT >= 0 ? 'N' : 'S') + ', ' + Math.abs(RECEIVER_LON).toFixed(2) + '\u00b0' + (RECEIVER_LON >= 0 ? 'E' : 'W');
             document.getElementById('satStatus').innerHTML = '<strong>' + locked + '</strong> locked / ' + total + ' visible';
+
+            viewer.scene.requestRender();
         }
 
-        // ── GPS DATA POLLING ──
+        // ── GPS POLLING ──
         async function fetchGPS() {
             try {
                 var resp = await fetch('/api/gps');
@@ -661,17 +677,51 @@
             }
         }
 
+        // ── FLY-TO-RECEIVER TOGGLE ──
+        var isZoomedIn = false;
+        var flyToBtn = document.getElementById('flyToBtn');
+
+        function flyToReceiver() {
+            pauseAutoRotate();
+            if (!isZoomedIn) {
+                // Cinematic fly-in to ~80km above receiver
+                viewer.camera.flyTo({
+                    destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 80000),
+                    orientation: {
+                        heading: Cesium.Math.toRadians(30),
+                        pitch: Cesium.Math.toRadians(-45),
+                        roll: 0
+                    },
+                    duration: 3,
+                    easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT
+                });
+                isZoomedIn = true;
+                flyToBtn.classList.add('zoomed-in');
+                flyToBtn.title = 'Back to orbit view';
+            } else {
+                // Fly back out to orbital view
+                viewer.camera.flyTo({
+                    destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 42000000),
+                    orientation: {
+                        heading: Cesium.Math.toRadians(10),
+                        pitch: Cesium.Math.toRadians(-88),
+                        roll: 0
+                    },
+                    duration: 3,
+                    easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT
+                });
+                isZoomedIn = false;
+                flyToBtn.classList.remove('zoomed-in');
+                flyToBtn.title = 'Fly to receiver';
+            }
+        }
+
         // ── INIT ──
         async function init() {
             await Promise.all([loadTLEs(), fetchGPS()]);
-
-            // Hide loading overlay
             document.getElementById('loadingOverlay').classList.add('hidden');
-
-            // Initial satellite plot
             updateSatellites();
 
-            // Fly in to a nice orbital viewing distance — Earth centered
             viewer.camera.flyTo({
                 destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 42000000),
                 orientation: {
@@ -683,13 +733,13 @@
                 easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT
             });
 
-            // Update loop
+            // GPS data refresh every 10s
             setInterval(async function() {
                 await fetchGPS();
                 updateSatellites();
             }, 10000);
 
-            // Update positions every 2s (no GPS refetch, just recompute from TLEs)
+            // Position recompute every 5s (GPS sats move slowly at 20,200km)
             setInterval(function() {
                 var now = new Date();
                 for (var prn in tleData) {
@@ -699,13 +749,14 @@
                         satEntities[prn].position = Cesium.Cartesian3.fromDegrees(pos.lon, pos.lat, pos.alt);
                     }
                 }
-            }, 2000);
+                viewer.scene.requestRender();
+            }, 5000);
         }
 
         // ── NAV DISK CONTROLLER ──
         (function() {
-            var PAN_RATE = 0.003;  // radians per frame
-            var ZOOM_RATE = 0.04;  // fraction per frame
+            var PAN_RATE = 0.003;
+            var ZOOM_RATE = 0.04;
             var activeAction = null;
             var navFrame = null;
 
@@ -716,17 +767,25 @@
                 right:   function() { viewer.camera.rotateRight(PAN_RATE); },
                 zoomin:  function() { var h = viewer.camera.positionCartographic ? viewer.camera.positionCartographic.height : 1e7; viewer.camera.zoomIn(h * ZOOM_RATE); },
                 zoomout: function() { var h = viewer.camera.positionCartographic ? viewer.camera.positionCartographic.height : 1e7; viewer.camera.zoomOut(h * ZOOM_RATE); },
-                home:    null  // handled separately
+                home:    null,
+                flyto:   null
             };
 
             function startAction(action, btn) {
                 if (action === 'home') {
                     pauseAutoRotate();
+                    isZoomedIn = false;
+                    flyToBtn.classList.remove('zoomed-in');
+                    flyToBtn.title = 'Fly to receiver';
                     viewer.camera.flyTo({
                         destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 42000000),
                         orientation: { heading: 0, pitch: Cesium.Math.toRadians(-88), roll: 0 },
                         duration: 2
                     });
+                    return;
+                }
+                if (action === 'flyto') {
+                    flyToReceiver();
                     return;
                 }
                 pauseAutoRotate();
@@ -735,6 +794,7 @@
                 function tick() {
                     if (!activeAction) return;
                     if (actions[activeAction]) actions[activeAction]();
+                    viewer.scene.requestRender();
                     navFrame = requestAnimationFrame(tick);
                 }
                 navFrame = requestAnimationFrame(tick);
@@ -747,7 +807,6 @@
                 for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
             }
 
-            // Bind all nav/zoom buttons — mouse + touch
             var allBtns = document.querySelectorAll('.nav-btn, .zoom-btn');
             for (var i = 0; i < allBtns.length; i++) {
                 (function(btn) {
@@ -771,7 +830,6 @@
                 panel.classList.toggle('collapsed', collapsed);
                 toggle.textContent = collapsed ? 'i' : '\u00d7';
             });
-            // Auto-collapse on small screens
             if (window.innerWidth <= 768) {
                 collapsed = true;
                 panel.classList.add('collapsed');

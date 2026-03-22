@@ -1,4 +1,4 @@
-// ── NTP Ground Station — Visualization Engine v2.1 ──
+// ── ChronoLens — Visualization Engine v2.1 ──
 // Data-driven canvas visualizations for chrony + GPS monitoring
 // Each viz: draw(ctx, w, h, t, sats, ntpData, TC)
 
