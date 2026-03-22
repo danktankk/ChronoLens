@@ -1,9 +1,10 @@
 ## Web UI will be available on port 55234 once deployed ##
 
 services:
-  ntp-dashboard:
+  chronolens:
     build: .
-    container_name: ntp-dashboard
+    container_name: chronolens
+    image: chronolens:latest
     network_mode: "host"
     volumes:
       - ./data:/app/data        # Persists config + encryption key
