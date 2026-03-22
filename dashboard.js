@@ -195,8 +195,8 @@ document.getElementById('configForm').addEventListener('submit', async function(
             auth: document.getElementById('auth').value,
             password: document.getElementById('password').value,
             cesium_token: document.getElementById('cesiumToken').value,
-            receiver_lat: isNaN(parseFloat(document.getElementById('receiverLat').value)) ? '' : parseFloat(document.getElementById('receiverLat').value),
-            receiver_lon: isNaN(parseFloat(document.getElementById('receiverLon').value)) ? '' : parseFloat(document.getElementById('receiverLon').value)
+            receiver_lat: (function(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; })(document.getElementById('receiverLat').value),
+            receiver_lon: (function(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; })(document.getElementById('receiverLon').value)
         })
     });
     closeSettings(); loadUI(); fetchNTP(); fetchGPS();
