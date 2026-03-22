@@ -679,40 +679,56 @@
 
         // ── FLY-TO-RECEIVER TOGGLE ──
         var isZoomedIn = false;
+        var isFlying = false;
         var flyToBtn = document.getElementById('flyToBtn');
 
         function flyToReceiver() {
+            if (isFlying) return;          // prevent double-click during flight
+            isFlying = true;
             pauseAutoRotate();
+
             if (!isZoomedIn) {
-                // Cinematic fly-in to ~80km above receiver
+                // Fly to 1km directly above receiver, looking straight down
                 viewer.camera.flyTo({
-                    destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 80000),
+                    destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 1000),
                     orientation: {
-                        heading: Cesium.Math.toRadians(30),
-                        pitch: Cesium.Math.toRadians(-45),
+                        heading: 0,
+                        pitch: Cesium.Math.toRadians(-90),
                         roll: 0
                     },
-                    duration: 3,
-                    easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT
+                    duration: 10,
+                    easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
+                    complete: function() {
+                        isZoomedIn = true;
+                        isFlying = false;
+                        flyToBtn.classList.add('zoomed-in');
+                        flyToBtn.title = 'Back to orbit view';
+                    },
+                    cancel: function() {
+                        isFlying = false;
+                    }
                 });
-                isZoomedIn = true;
-                flyToBtn.classList.add('zoomed-in');
-                flyToBtn.title = 'Back to orbit view';
             } else {
                 // Fly back out to orbital view
                 viewer.camera.flyTo({
                     destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 42000000),
                     orientation: {
-                        heading: Cesium.Math.toRadians(10),
-                        pitch: Cesium.Math.toRadians(-88),
+                        heading: 0,
+                        pitch: Cesium.Math.toRadians(-90),
                         roll: 0
                     },
-                    duration: 3,
-                    easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT
+                    duration: 10,
+                    easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
+                    complete: function() {
+                        isZoomedIn = false;
+                        isFlying = false;
+                        flyToBtn.classList.remove('zoomed-in');
+                        flyToBtn.title = 'Fly to receiver';
+                    },
+                    cancel: function() {
+                        isFlying = false;
+                    }
                 });
-                isZoomedIn = false;
-                flyToBtn.classList.remove('zoomed-in');
-                flyToBtn.title = 'Fly to receiver';
             }
         }
 
