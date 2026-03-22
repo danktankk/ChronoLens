@@ -1,8 +1,19 @@
-# NTP Ground Station Dashboard
+# ChronoLens
 
 A real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Runs as a single Docker container, connects to a remote chrony/gpsd host over SSH, and serves a browser-based UI with 16 live visualizations.
 
 ![Dashboard](https://img.shields.io/badge/port-55234-blue) ![Docker](https://img.shields.io/badge/docker-compose-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+
+---
+
+## Image Variants
+
+| Tag | Size | Description |
+|-----|------|-------------|
+| `ghcr.io/danktankk/chronolens:latest` | ~100MB | **Slim.** Remote-only — connects to your NTP/GPS host via SSH. This is what you want. |
+| `ghcr.io/danktankk/chronolens:0.2.5-local` | ~1.4GB | **Full.** Includes chrony + gpsd-clients inside the container for local mode. |
+
+**What does "local" mean?** It does NOT mean "running at home" or "on your LAN." It means chrony and gpsd are running *inside the same Docker container* as the web dashboard — i.e., you have a GPS receiver plugged directly into the machine running the container and chrony/gpsd configured there. If you monitor a separate NTP server over SSH (which is almost certainly your setup), use the slim image.
 
 ---
 
@@ -12,31 +23,50 @@ A real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Runs 
 - **16 visualization modes** across two side-by-side canvas panels with a modal picker
 - **7 GPS visualizations** — 3D wireframe globe, polar radar scope, signal skyline (SNR bars), polar heatmap, constellation web, horizon sweep, signal radar (spider chart)
 - **8 NTP/chrony visualizations** — drift timeline, chrony dashboard (12-metric grid), source offset comparison, frequency drift, source jitter, reach pattern, root metrics, stratum tree
-- **COBE planet Earth** — WebGL globe with theme-aware colors and real satellite markers (loaded from CDN)
+- **COBE planet Earth** — WebGL globe with theme-aware colors and real satellite markers
 - **7 themes** — Ground Station, Daylight, Phosphor, Solar, Arctic, Amber Terminal, Deep Space
 - **Auto-cycle** — rotates through visualizations with smooth fade transitions
 - **Live data** — chrony tracking/sources/sourcestats polled every 2s, GPS via gpspipe every 30s
 - **Settings modal** — configure target host, SSH auth, Cesium token, receiver coordinates
+- **WCAG accessible** — all themes pass 4.5:1 contrast ratio, minimum 0.7rem CSS / 9px canvas fonts
+- **Canvas fade-in** — visualizations sync with page entrance animations
 
 ### Satellite Tracker (`/satellite`)
 - **CesiumJS 3D globe** — photorealistic Earth with terrain, atmosphere, and day/night lighting
 - **Real GPS constellation** — all operational GPS satellites plotted from CelesTrak TLE data
 - **Live receiver overlay** — satellites your receiver can see are highlighted, locked sats glow green
 - **Orbital paths** — 12-hour predicted orbit lines for visible satellites
-- **Navigation disk** — on-screen D-pad for pan/zoom/home (hold to continuous move)
-- **Mobile ready** — full Android/iPhone support with touch gestures, responsive layout, collapsible info panel
+- **Navigation disk** — on-screen D-pad for pan/zoom/home (hold to continuous move, touch support)
+- **Mobile ready** — full Android/iPhone support with dvh units, touch gestures, responsive layout, collapsible info panel
 - **Street-level zoom** — zoom from orbital view all the way down to individual buildings
 - **Self-hosted assets** — CesiumJS and satellite.js bundled in the Docker image (no CDN dependency at runtime)
+
+### Multi-Architecture
+- Images built for both **linux/amd64** and **linux/arm64** (Raspberry Pi, Apple Silicon, etc.)
 
 ---
 
 ## Quick Start
 
-### 1. Clone and deploy
+### 1. Create a directory and compose file
 
 ```bash
-git clone https://github.com/danktankk/ntp-docker.git
-cd ntp-docker
+mkdir chronolens && cd chronolens
+```
+
+Create `compose.yaml`:
+
+```yaml
+services:
+  chronolens:
+    image: ghcr.io/danktankk/chronolens:latest
+    container_name: chronolens
+    ports:
+      - "55234:55234"
+    volumes:
+      - ./data:/app/data
+      - ./ssh:/app/ssh:ro
+    restart: unless-stopped
 ```
 
 ### 2. Add your SSH key
@@ -74,7 +104,7 @@ To get a token:
 ### 4. Start
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 Dashboard will be available at `http://<your-host>:55234`
@@ -87,7 +117,6 @@ On first launch, open the **Settings** modal (gear icon on the dashboard) to con
 
 | Setting | Description |
 |---|---|
-| **Target Mode** | `Local` (chrony/gpsd on same host) or `Remote` (SSH to another host) |
 | **SSH Host** | IP or hostname of the chrony/gpsd server |
 | **SSH User** | Username for SSH connection |
 | **Auth Method** | `SSH Key` (mounted in `ssh/`) or `Password` |
@@ -155,6 +184,7 @@ Browser ──────► Flask (port 55234)
 - **Backend**: Flask + Paramiko (SSH). Polls remote chrony/gpsd host.
 - **CesiumJS**: Self-hosted in Docker image (~5MB JS). Satellite positions computed client-side from TLE data using satellite.js.
 - **Data persistence**: `data/` volume stores encrypted config and encryption key.
+- **Multi-stage build**: Slim image uses a builder stage for asset downloads (Cesium, satellite.js, Tailwind), keeping the final image free of wget/unzip tooling.
 
 ---
 
@@ -170,9 +200,20 @@ Browser ──────► Flask (port 55234)
 ## Requirements
 
 - Docker + Docker Compose
-- A chrony + gpsd host (local or remote via SSH)
+- A chrony + gpsd host accessible via SSH
 - A browser with WebGL support (any modern browser)
 - (Optional) Free Cesium Ion account for satellite tracker
+
+---
+
+## Version History
+
+| Version | Changes |
+|---------|---------|
+| **0.2.5** | Multi-stage slim Dockerfile (~100MB), multi-arch (amd64/arm64), local mode split to separate image variant |
+| **0.2.4** | Code review cleanup — fixed stale version display, collapsed theme hierarchy, duplicate style tags, unused params, DRY refactors |
+| **0.2.3** | Full readability overhaul — all themes pass WCAG 4.5:1, min font sizes enforced, alpha floors raised |
+| **0.2.0** | Self-hosted CesiumJS + satellite.js, navigation disk with touch support, full mobile support |
 
 ---
 
