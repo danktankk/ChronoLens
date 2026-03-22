@@ -1,10 +1,10 @@
-# NTP Ground Station Dashboard
+# ChronoLens
 
 A real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Runs as a single Docker container, connects to a remote chrony/gpsd host over SSH, and serves a browser-based UI with 16 live visualizations.
 
 ![Dashboard](https://img.shields.io/badge/port-55234-blue) ![Docker](https://img.shields.io/badge/docker-compose-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
-> **Credits:** This project is a fork of [NightHawkATL/ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawk-ATL](https://github.com/NightHawkATL). The original idea and core code are his work. If you find this useful, please go star his repo.
+> **Credits:** ChronoLens is built on [NTP Dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawk-ATL](https://github.com/NightHawkATL). The original idea and core code are his work. If you find this useful, please go star his repo.
 
 ---
 
