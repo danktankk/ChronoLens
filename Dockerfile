@@ -1,6 +1,6 @@
-FROM python:3.11-slim
+FROM python:3.11-slim AS builder
 
-RUN apt-get update && apt-get install -y chrony gpsd-clients wget unzip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y wget unzip && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -18,9 +18,14 @@ RUN mkdir -p /tmp/cesium && \
 # Self-host satellite.js
 RUN wget -q https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js -O /app/static/satellite.min.js
 
+FROM python:3.11-slim
+
+WORKDIR /app
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY --from=builder /app/static /app/static
 COPY . .
 
 EXPOSE 55234
