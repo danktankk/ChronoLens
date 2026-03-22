@@ -469,7 +469,7 @@
         scene.globe.showGroundAtmosphere = true;
 
         // Receiver marker
-        viewer.entities.add({
+        var receiverEntity = viewer.entities.add({
             position: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, RECEIVER_ALT),
             point: {
                 pixelSize: 14,
@@ -688,10 +688,8 @@
             pauseAutoRotate();
 
             if (!isZoomedIn) {
-                // Lock camera to receiver — rotates with the earth
-                viewer.trackedEntity = receiverEntity;
-
                 // Multi-stage descent: fast to 1600km, then slow to 1km (lets textures load)
+                // trackedEntity is set AFTER descent completes to avoid fighting the flyTo
                 viewer.camera.flyTo({
                     destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 1600000),
                     orientation: {
@@ -713,6 +711,8 @@
                             duration: 14,
                             easingFunction: Cesium.EasingFunction.CUBIC_OUT,
                             complete: function() {
+                                // Lock camera to receiver — rotates with earth
+                                viewer.trackedEntity = receiverEntity;
                                 isZoomedIn = true;
                                 isFlying = false;
                                 flyToBtn.classList.add('zoomed-in');
@@ -812,7 +812,9 @@
             function startAction(action, btn) {
                 if (action === 'home') {
                     pauseAutoRotate();
+                    viewer.trackedEntity = undefined;
                     isZoomedIn = false;
+                    isFlying = false;
                     flyToBtn.classList.remove('zoomed-in');
                     flyToBtn.title = 'Fly to receiver';
                     viewer.camera.flyTo({
