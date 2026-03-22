@@ -6,6 +6,55 @@ A real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Runs 
 
 ---
 
+## Screenshots
+
+### Dashboard
+![Dashboard](screenshots/dashboard-main.png)
+
+### Satellite Tracker
+![Satellite Tracker](screenshots/satellite-tracker.png)
+
+### Themes
+| Ground Station | Daylight | Phosphor |
+|:-:|:-:|:-:|
+| ![Ground Station](screenshots/theme-ground-station.png) | ![Daylight](screenshots/theme-daylight.png) | ![Phosphor](screenshots/theme-phosphor.png) |
+
+| Solar | Arctic | Amber Terminal |
+|:-:|:-:|:-:|
+| ![Solar](screenshots/theme-solar.png) | ![Arctic](screenshots/theme-arctic.png) | ![Amber Terminal](screenshots/theme-amber-terminal.png) |
+
+| Deep Space |
+|:-:|
+| ![Deep Space](screenshots/theme-deep-space.png) |
+
+### Visualizations (GPS)
+| 3D Globe | Radar Scope | Signal Skyline |
+|:-:|:-:|:-:|
+| ![Globe](screenshots/viz-globe.png) | ![Radar](screenshots/viz-radar.png) | ![Skyline](screenshots/viz-skyline.png) |
+
+| Polar Heatmap | Constellation Web | Horizon Sweep |
+|:-:|:-:|:-:|
+| ![Heatmap](screenshots/viz-heatmap.png) | ![Web](screenshots/viz-web.png) | ![Horizon](screenshots/viz-horizon.png) |
+
+| Signal Radar | Planet Earth |
+|:-:|:-:|
+| ![Signal Radar](screenshots/viz-signal-radar.png) | ![Planet](screenshots/viz-planet.png) |
+
+### Visualizations (NTP/Chrony)
+| Chrony Dashboard | Offset Timeline | Frequency Drift |
+|:-:|:-:|:-:|
+| ![Chrony](screenshots/viz-chrony-dash.png) | ![Timeline](screenshots/viz-timeline.png) | ![Freq Drift](screenshots/viz-freq-drift.png) |
+
+| Source Offsets | Source Jitter | Reach Pattern |
+|:-:|:-:|:-:|
+| ![Source Compare](screenshots/viz-source-compare.png) | ![Jitter](screenshots/viz-source-jitter.png) | ![Reach](screenshots/viz-reach.png) |
+
+| Root Metrics | Stratum Tree |
+|:-:|:-:|
+| ![Root Metrics](screenshots/viz-root-metrics.png) | ![Tree](screenshots/viz-tree.png) |
+
+---
+
 ## Features
 
 ### Main Dashboard (`/`)
