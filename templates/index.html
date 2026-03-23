@@ -947,12 +947,12 @@
         <div class="panel animate-in delay-5">
             <div class="panel-header">
                 <span class="panel-title">NTP Sources</span>
-                <span class="panel-badge">chronyc &middot; 2s</span>
+                <span class="panel-badge" id="serverStratumBadge">chronyc &middot; 2s</span>
             </div>
             <table class="data-table">
-                <thead><tr><th>St</th><th>Source</th><th>Str</th><th>Poll</th><th>Reach</th><th>LastRx</th><th>Offset</th></tr></thead>
+                <thead><tr><th>Type</th><th>Source</th><th>Str</th><th>State</th><th>Poll</th><th>Reach</th><th>LastRx</th><th>Offset</th></tr></thead>
                 <tbody id="ntpTableBody">
-                    <tr><td colspan="7" style="padding:1.5rem;color:var(--text-tertiary);text-align:center;">Connecting&hellip;</td></tr>
+                    <tr><td colspan="8" style="padding:1.5rem;color:var(--text-tertiary);text-align:center;">Connecting&hellip;</td></tr>
                 </tbody>
             </table>
         </div>

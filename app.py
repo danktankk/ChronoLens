@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-APP_VERSION = "v0.4.1"
+APP_VERSION = "v0.5.0"
 
 @app.after_request
 def security_headers(response):
@@ -284,8 +284,10 @@ def get_ntp():
     # Legacy offset string for backward compat
     offset = tracking.get('system_time_str', 'Unknown')
 
-    # Parse sources — correct refclock stratum 0 to server's actual stratum
-    server_stratum = tracking.get('stratum', 1)
+    # Parse sources — preserve raw stratum, add type/state metadata
+    MODE_MAP = {'#': 'refclock', '^': 'server', '=': 'peer'}
+    STATE_MAP = {'*': 'synced', '+': 'combined', '-': 'excluded',
+                 '?': 'unknown', 'x': 'falseticker', '~': 'variable'}
     sources = []
     lines = sources_out.strip().split('\n')
     start_idx = next((i + 1 for i, l in enumerate(lines) if set(l.strip()) == {'='}), -1)
@@ -294,16 +296,13 @@ def get_ntp():
             if not line.strip(): continue
             parts = line.split()
             if len(parts) >= 6:
-                raw_stratum = parts[2]
-                name = parts[1]
-                is_refclock = name.startswith('.') or any(x in name.upper() for x in ['NMEA', 'PPS', 'GPS', 'SHM'])
-                if raw_stratum == '0' and is_refclock:
-                    stratum = str(server_stratum)
-                else:
-                    stratum = raw_stratum
+                ms = parts[0]  # e.g. "#*", "^~", "^?"
+                mode = MODE_MAP.get(ms[0], 'unknown') if ms else 'unknown'
+                state = STATE_MAP.get(ms[1], 'unknown') if len(ms) > 1 else 'unknown'
                 sources.append({
-                    "state": parts[0], "name": name, "stratum": stratum,
-                    "raw_stratum": raw_stratum, "is_refclock": is_refclock,
+                    "mode_state": ms, "name": parts[1],
+                    "stratum": parts[2],  # raw from chronyc — correct as-is
+                    "source_type": mode, "source_state": state,
                     "poll": parts[3], "reach": parts[4], "lastrx": parts[5],
                     "last_sample": " ".join(parts[6:])
                 })
