@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-APP_VERSION = "v0.5.3"
+APP_VERSION = "v0.4.1"
 
 @app.after_request
 def security_headers(response):
@@ -55,11 +55,6 @@ def decrypt_pwd(encrypted_pwd):
 def find_ssh_key():
     if not os.path.isdir(SSH_KEY_DIR):
         return None
-    for name in ['id_rsa', 'id_ed25519', 'ed25519', 'id_ecdsa', 'key', 'cc']:
-        path = os.path.join(SSH_KEY_DIR, name)
-        if os.path.isfile(path):
-            return path
-    # Fallback: use any non-.pub file in the ssh dir
     for name in os.listdir(SSH_KEY_DIR):
         path = os.path.join(SSH_KEY_DIR, name)
         if os.path.isfile(path) and not name.endswith('.pub'):
@@ -281,7 +276,7 @@ def get_ntp():
 
     outs = run_commands_remote(cmds, config)
 
-    tracking_out, sources_out, sourcestats_out = outs
+    tracking_out, sources_out, sourcestats_out = outs[0], outs[1], outs[2]
 
     # Parse tracking into structured data
     tracking = parse_tracking(tracking_out)
@@ -289,10 +284,8 @@ def get_ntp():
     # Legacy offset string for backward compat
     offset = tracking.get('system_time_str', 'Unknown')
 
-    # Parse sources — preserve raw stratum, add type/state metadata
-    MODE_MAP = {'#': 'refclock', '^': 'server', '=': 'peer'}
-    STATE_MAP = {'*': 'synced', '+': 'combined', '-': 'excluded',
-                 '?': 'unknown', 'x': 'falseticker', '~': 'variable'}
+    # Parse sources — correct refclock stratum 0 to server's actual stratum
+    server_stratum = tracking.get('stratum', 1)
     sources = []
     lines = sources_out.strip().split('\n')
     start_idx = next((i + 1 for i, l in enumerate(lines) if set(l.strip()) == {'='}), -1)
@@ -301,15 +294,16 @@ def get_ntp():
             if not line.strip(): continue
             parts = line.split()
             if len(parts) >= 6:
-                ms = parts[0]  # e.g. "#*", "^~", "^?"
-                mode = MODE_MAP.get(ms[0], 'unknown') if ms else 'unknown'
-                state = STATE_MAP.get(ms[1], 'unknown') if len(ms) > 1 else 'unknown'
-                raw_stratum = int(parts[2]) if parts[2].isdigit() else 0
-
+                raw_stratum = parts[2]
+                name = parts[1]
+                is_refclock = name.startswith('.') or any(x in name.upper() for x in ['NMEA', 'PPS', 'GPS', 'SHM'])
+                if raw_stratum == '0' and is_refclock:
+                    stratum = str(server_stratum)
+                else:
+                    stratum = raw_stratum
                 sources.append({
-                    "mode_state": ms, "name": parts[1],
-                    "stratum": raw_stratum,
-                    "source_type": mode, "source_state": state,
+                    "state": parts[0], "name": name, "stratum": stratum,
+                    "raw_stratum": raw_stratum, "is_refclock": is_refclock,
                     "poll": parts[3], "reach": parts[4], "lastrx": parts[5],
                     "last_sample": " ".join(parts[6:])
                 })
