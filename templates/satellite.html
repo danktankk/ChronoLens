@@ -417,7 +417,7 @@
         <button class="nav-btn home" data-action="home" aria-label="Reset view">&#8962;</button>
     </div>
 
-    <script>var CHRONOLENS_AUTH_TOKEN = '{{ auth_token }}';</script>
+    <script>var CHRONOLENS_AUTH_TOKEN = {{ auth_token|tojson }};</script>
     <script>
         // ── KIOSK MODE ──
         if (new URLSearchParams(window.location.search).has('kiosk')) {
@@ -425,7 +425,7 @@
         }
 
         // ── CONFIG ──
-        Cesium.Ion.defaultAccessToken = '{{ cesium_token }}';
+        Cesium.Ion.defaultAccessToken = {{ cesium_token|tojson }};
 
         var RECEIVER_LAT = {{ receiver_lat }};
         var RECEIVER_LON = {{ receiver_lon }};
@@ -597,7 +597,7 @@
 
                 if (isVisible) total++;
                 if (isLocked) locked++;
-                if (det) totalSnr += snr;
+                if (isVisible) totalSnr += snr;
 
                 var color, size;
                 if (isLocked) { color = C_LOCKED; size = 16; }
@@ -668,12 +668,20 @@
             viewer.scene.requestRender();
         }
 
+        // Authenticated fetch wrapper (matches dashboard.js)
+        function authFetch(url, opts) {
+            opts = opts || {};
+            opts.headers = opts.headers || {};
+            if (typeof CHRONOLENS_AUTH_TOKEN !== 'undefined' && CHRONOLENS_AUTH_TOKEN) {
+                opts.headers['Authorization'] = 'Bearer ' + CHRONOLENS_AUTH_TOKEN;
+            }
+            return fetch(url, opts);
+        }
+
         // ── GPS POLLING ──
         async function fetchGPS() {
             try {
-                var hdrs = {};
-                if (typeof CHRONOLENS_AUTH_TOKEN !== 'undefined' && CHRONOLENS_AUTH_TOKEN) hdrs['Authorization'] = 'Bearer ' + CHRONOLENS_AUTH_TOKEN;
-                var resp = await fetch('/api/gps', {headers: hdrs});
+                var resp = await authFetch('/api/gps');
                 gpsData = await resp.json();
             } catch (e) {
                 console.error('GPS fetch failed:', e);

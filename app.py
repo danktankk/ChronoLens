@@ -1,5 +1,5 @@
 import os, json, re, threading, time
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, make_response, redirect
 import paramiko
 from cryptography.fernet import Fernet
 
@@ -14,10 +14,23 @@ AUTH_TOKEN = os.environ.get('CHRONOLENS_AUTH_TOKEN', '')
 def check_auth():
     if not AUTH_TOKEN:
         return  # No token configured = no auth enforced (backwards compat)
+    # Skip auth for static files (CSS, JS, images)
+    if request.path.startswith('/static/'):
+        return
     if request.path.startswith('/api/'):
         provided = request.headers.get('Authorization', '')
         if provided != f'Bearer {AUTH_TOKEN}':
             return jsonify({"error": "unauthorized"}), 401
+    else:
+        # Page routes: check token via query param or cookie
+        token = request.args.get('token') or request.cookies.get('chronolens_auth')
+        if token != AUTH_TOKEN:
+            return 'Unauthorized. Append ?token=YOUR_TOKEN to the URL.', 401
+        # Set auth cookie on first visit with ?token= so subsequent visits don't need it
+        if request.args.get('token') and not request.cookies.get('chronolens_auth'):
+            resp = make_response(redirect(request.path))
+            resp.set_cookie('chronolens_auth', AUTH_TOKEN, httponly=True, samesite='Strict', max_age=86400*30)
+            return resp
 
 @app.after_request
 def security_headers(response):
@@ -117,6 +130,7 @@ def run_commands_remote(cmds, config):
                 connect_kwargs['look_for_keys'] = True
 
         ssh.connect(**connect_kwargs)
+        ssh.save_host_keys(KNOWN_HOSTS_FILE)
         for cmd in cmds:
             stdin, stdout, stderr = ssh.exec_command(cmd, timeout=5)
             err_out = stderr.read().decode('utf-8').strip()
@@ -287,9 +301,7 @@ def get_ntp():
 
     outs = run_commands_remote(cmds, config)
 
-    tracking_out = outs[0]
-    sources_out = outs[1]
-    sourcestats_out = outs[2] if len(outs) > 2 else ""
+    tracking_out, sources_out, sourcestats_out = outs[0], outs[1], outs[2]
 
     # Parse tracking into structured data
     tracking = parse_tracking(tracking_out)
@@ -376,16 +388,12 @@ def config_endpoint():
         new_conf = {k: v for k, v in (request.json or {}).items() if k in ALLOWED_KEYS}
         old_conf = load_config()
 
-        if not new_conf.get('password') and old_conf.get('password'):
-            new_conf['password'] = old_conf['password']
-        elif new_conf.get('password'):
-            new_conf['password'] = encrypt_pwd(new_conf['password'])
-
-        # Encrypt cesium token if changed
-        if not new_conf.get('cesium_token') and old_conf.get('cesium_token'):
-            new_conf['cesium_token'] = old_conf['cesium_token']
-        elif new_conf.get('cesium_token'):
-            new_conf['cesium_token'] = encrypt_pwd(new_conf['cesium_token'])
+        # For encrypted fields: keep existing value if blank, encrypt if changed
+        for field in ('password', 'cesium_token'):
+            if not new_conf.get(field) and old_conf.get(field):
+                new_conf[field] = old_conf[field]
+            elif new_conf.get(field):
+                new_conf[field] = encrypt_pwd(new_conf[field])
 
         # Merge into existing config to preserve fields not sent by frontend
         old_conf.update(new_conf)
