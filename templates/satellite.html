@@ -417,7 +417,6 @@
         <button class="nav-btn home" data-action="home" aria-label="Reset view">&#8962;</button>
     </div>
 
-    <script>var CHRONOLENS_AUTH_TOKEN = {{ auth_token|tojson }};</script>
     <script>
         // ── KIOSK MODE ──
         if (new URLSearchParams(window.location.search).has('kiosk')) {
@@ -668,20 +667,10 @@
             viewer.scene.requestRender();
         }
 
-        // Authenticated fetch wrapper (matches dashboard.js)
-        function authFetch(url, opts) {
-            opts = opts || {};
-            opts.headers = opts.headers || {};
-            if (typeof CHRONOLENS_AUTH_TOKEN !== 'undefined' && CHRONOLENS_AUTH_TOKEN) {
-                opts.headers['Authorization'] = 'Bearer ' + CHRONOLENS_AUTH_TOKEN;
-            }
-            return fetch(url, opts);
-        }
-
         // ── GPS POLLING ──
         async function fetchGPS() {
             try {
-                var resp = await authFetch('/api/gps');
+                var resp = await fetch('/api/gps');
                 gpsData = await resp.json();
             } catch (e) {
                 console.error('GPS fetch failed:', e);
