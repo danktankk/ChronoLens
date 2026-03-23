@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="screenshots/banner.svg" alt="ChronoLens Banner" width="100%">
+</p>
+
 # ChronoLens
 
 > **Based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL).** The original code and getting this project started are thanks to him alone — this project builds on that foundation. Original project licensed under [MIT](https://github.com/NightHawkATL/ntp-dashboard/blob/main/LICENSE).  And his project can be found at [NTP-Dashboard](https://github.com/NightHawkATL/ntp-dashboard)
