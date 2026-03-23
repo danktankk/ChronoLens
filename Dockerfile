@@ -21,15 +21,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN useradd -r -s /bin/false chronolens && mkdir -p /app/data && chown chronolens:chronolens /app/data
-
 COPY . .
 COPY --from=builder /app/static/cesium /app/static/cesium
 COPY --from=builder /app/static/satellite.min.js /app/static/satellite.min.js
-
-RUN chown -R chronolens:chronolens /app
-
-USER chronolens
 
 EXPOSE 55234
 
