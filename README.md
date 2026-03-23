@@ -2,7 +2,12 @@
   <img src="screenshots/banner.svg" alt="ChronoLens Banner" width="100%">
 </p>
 
-> **Based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL).** The original code and getting this project started are thanks to him alone — this project builds on that foundation. Original project licensed under [MIT](https://github.com/NightHawkATL/ntp-dashboard/blob/main/LICENSE).  And his project can be found at [NTP-Dashboard](https://github.com/NightHawkATL/ntp-dashboard) If you find this useful, consider giving his project a star.
+> **Based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL).** The original code and getting this project started are thanks to him alone — this project builds on that foundation. Original project licensed under [MIT](https://github.com/NightHawkATL/ntp-dashboard/blob/main/LICENSE).  And his project can be found at [NTP-Dashboard](https://github.com/NightHawkATL/ntp-dashboard) If you find this useful, consider giving his project a <a class="github-button" 
+   href="[https://github.com/user/repo](https://github.com/NightHawkATL/ntp-dashboard)" 
+   data-icon="octicon-star" 
+   data-show-count="true">
+   Star
+</a>
 
 A real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Runs as a single Docker container, connects to a remote chrony/gpsd host over SSH, and serves a browser-based UI with 16 live visualizations.
 
