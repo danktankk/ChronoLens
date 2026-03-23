@@ -811,7 +811,8 @@ var VizEngine = (function() {
             var angleStep = Math.PI * 2 / sources.length;
             for (var i = 0; i < sources.length; i++) {
                 var src = sources[i];
-                var strat = parseInt(src.stratum) || 2;
+                var strat = parseInt(src.stratum) || 1;
+                if (strat < 1) strat = 1;
                 var r = Math.min(strat, maxStrat) * 55;
                 var angle = i * angleStep - Math.PI/2 + Math.sin(t*0.0003)*0.1;
                 var nx = cx + r*Math.cos(angle), ny = cy + r*Math.sin(angle);

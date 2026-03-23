@@ -21,9 +21,15 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+RUN useradd -r -s /bin/false chronolens && mkdir -p /app/data && chown chronolens:chronolens /app/data
+
 COPY --from=builder /app/static /app/static
 COPY . .
 
+RUN chown -R chronolens:chronolens /app
+
+USER chronolens
+
 EXPOSE 55234
 
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:55234", "--workers", "2", "--timeout", "30", "app:app"]

@@ -1,11 +1,33 @@
-import os, json, re
+import os, json, re, threading, time
 from flask import Flask, render_template, jsonify, request
 import paramiko
 from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-APP_VERSION = "v0.3.0"
+APP_VERSION = "v0.4.0"
+
+# --- Authentication ---
+AUTH_TOKEN = os.environ.get('CHRONOLENS_AUTH_TOKEN', '')
+
+@app.before_request
+def check_auth():
+    if not AUTH_TOKEN:
+        return  # No token configured = no auth enforced (backwards compat)
+    if request.path.startswith('/api/'):
+        provided = request.headers.get('Authorization', '')
+        if provided != f'Bearer {AUTH_TOKEN}':
+            return jsonify({"error": "unauthorized"}), 401
+
+@app.after_request
+def security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    return response
+
+# --- SSH Connection Limiter ---
+_ssh_semaphore = threading.Semaphore(3)
 
 # --- Directory and File Paths ---
 DATA_DIR = '/app/data'
@@ -23,7 +45,8 @@ if not os.path.exists(CONFIG_FILE) and os.path.exists(DEFAULT_CONFIG):
 def get_cipher():
     if not os.path.exists(KEY_FILE):
         key = Fernet.generate_key()
-        with open(KEY_FILE, 'wb') as key_file:
+        fd = os.open(KEY_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'wb') as key_file:
             key_file.write(key)
     else:
         with open(KEY_FILE, 'rb') as key_file:
@@ -39,18 +62,14 @@ def decrypt_pwd(encrypted_pwd):
     try:
         return get_cipher().decrypt(encrypted_pwd.encode()).decode()
     except Exception:
-        return encrypted_pwd  # return as-is if not encrypted (plaintext migration)
+        return ""  # decryption failed — require re-entry
 
 def find_ssh_key():
     if not os.path.isdir(SSH_KEY_DIR):
         return None
-    for name in ['id_rsa', 'id_ed25519', 'id_ecdsa', 'key']:
+    for name in ['id_rsa', 'id_ed25519', 'id_ecdsa', 'key', 'cc']:
         path = os.path.join(SSH_KEY_DIR, name)
         if os.path.isfile(path):
-            return path
-    for name in os.listdir(SSH_KEY_DIR):
-        path = os.path.join(SSH_KEY_DIR, name)
-        if os.path.isfile(path) and not name.endswith('.pub'):
             return path
     return None
 
@@ -65,9 +84,15 @@ def load_config():
 def save_config(config):
     with open(CONFIG_FILE, 'w') as f: json.dump(config, f)
 
+KNOWN_HOSTS_FILE = os.path.join(DATA_DIR, 'known_hosts')
+
 def run_commands_remote(cmds, config):
+    if not _ssh_semaphore.acquire(timeout=5):
+        return ["Error: too many concurrent SSH connections"] * len(cmds)
     ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    if os.path.exists(KNOWN_HOSTS_FILE):
+        ssh.load_host_keys(KNOWN_HOSTS_FILE)
+    ssh.set_missing_host_key_policy(paramiko.WarningPolicy())
     results = []
     try:
         auth_mode = config.get('auth', 'key')
@@ -105,6 +130,7 @@ def run_commands_remote(cmds, config):
         return [f"Error: {str(e)}"] * len(cmds)
     finally:
         ssh.close()
+        _ssh_semaphore.release()
     return results
 
 def _parse_signed_float(val, pattern):
@@ -241,7 +267,7 @@ DEFAULT_CESIUM_TOKEN = os.environ.get('CESIUM_TOKEN', '')
 
 @app.route('/')
 def index():
-    return render_template('index.html', app_version=APP_VERSION)
+    return render_template('index.html', app_version=APP_VERSION, auth_token=AUTH_TOKEN)
 
 @app.route('/satellite')
 def satellite():
@@ -252,7 +278,7 @@ def satellite():
     except (ValueError, TypeError): lat = 39.0
     try: lon = float(conf.get('receiver_lon'))
     except (ValueError, TypeError): lon = -98.0
-    return render_template('satellite.html', cesium_token=token, receiver_lat=lat, receiver_lon=lon, app_version=APP_VERSION)
+    return render_template('satellite.html', cesium_token=token, receiver_lat=lat, receiver_lon=lon, app_version=APP_VERSION, auth_token=AUTH_TOKEN)
 
 @app.route('/api/ntp')
 def get_ntp():
@@ -271,7 +297,8 @@ def get_ntp():
     # Legacy offset string for backward compat
     offset = tracking.get('system_time_str', 'Unknown')
 
-    # Parse sources
+    # Parse sources — correct refclock stratum 0 to server's actual stratum
+    server_stratum = tracking.get('stratum', 1)
     sources = []
     lines = sources_out.strip().split('\n')
     start_idx = next((i + 1 for i, l in enumerate(lines) if set(l.strip()) == {'='}), -1)
@@ -280,8 +307,16 @@ def get_ntp():
             if not line.strip(): continue
             parts = line.split()
             if len(parts) >= 6:
+                raw_stratum = parts[2]
+                name = parts[1]
+                is_refclock = name.startswith('.') or any(x in name.upper() for x in ['NMEA', 'PPS', 'GPS', 'SHM'])
+                if raw_stratum == '0' and is_refclock:
+                    stratum = str(server_stratum)
+                else:
+                    stratum = raw_stratum
                 sources.append({
-                    "state": parts[0], "name": parts[1], "stratum": parts[2],
+                    "state": parts[0], "name": name, "stratum": stratum,
+                    "raw_stratum": raw_stratum, "is_refclock": is_refclock,
                     "poll": parts[3], "reach": parts[4], "lastrx": parts[5],
                     "last_sample": " ".join(parts[6:])
                 })
@@ -337,7 +372,8 @@ def get_gps():
 @app.route('/api/config', methods=['GET', 'POST'])
 def config_endpoint():
     if request.method == 'POST':
-        new_conf = request.json
+        ALLOWED_KEYS = {'mode', 'host', 'user', 'password', 'auth', 'cesium_token', 'receiver_lat', 'receiver_lon'}
+        new_conf = {k: v for k, v in (request.json or {}).items() if k in ALLOWED_KEYS}
         old_conf = load_config()
 
         if not new_conf.get('password') and old_conf.get('password'):
@@ -358,13 +394,15 @@ def config_endpoint():
 
     conf = load_config()
     conf['password'] = ""
-    # Decrypt token for display in settings (show raw value)
-    conf['cesium_token'] = decrypt_pwd(conf.get('cesium_token', ''))
+    # Decrypt token — mask in response, show only last 4 chars
+    raw_token = decrypt_pwd(conf.get('cesium_token', ''))
+    conf['cesium_token'] = ('*' * (len(raw_token) - 4) + raw_token[-4:]) if len(raw_token) > 4 else raw_token
+    conf['has_cesium_token'] = bool(raw_token)
     conf['has_ssh_key'] = find_ssh_key() is not None
-    return jsonify(conf)
+    # Only return whitelisted keys
+    allowed = {'mode', 'host', 'user', 'password', 'auth', 'cesium_token', 'has_cesium_token',
+               'has_ssh_key', 'receiver_lat', 'receiver_lon'}
+    return jsonify({k: v for k, v in conf.items() if k in allowed})
 
 if __name__ == '__main__':
-    is_debug = os.environ.get('DEBUG_MODE', 'false').lower() == 'true'
-    if is_debug:
-        print("DEBUG MODE ENABLED - Detailed errors will be shown in the browser.")
-    app.run(host='0.0.0.0', port=55234, debug=is_debug)
+    app.run(host='0.0.0.0', port=55234)

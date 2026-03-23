@@ -1,5 +1,15 @@
-// ── ChronoLens Dashboard v0.2.4 ──
+// ── ChronoLens Dashboard v0.4.0 ──
 // Theme-aware canvas globe + radar
+
+// Authenticated fetch wrapper
+function authFetch(url, opts) {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    if (typeof CHRONOLENS_AUTH_TOKEN !== 'undefined' && CHRONOLENS_AUTH_TOKEN) {
+        opts.headers['Authorization'] = 'Bearer ' + CHRONOLENS_AUTH_TOKEN;
+    }
+    return fetch(url, opts);
+}
 
 // ═══════════════════════════════════════════
 // 1. THEME ENGINE
@@ -159,7 +169,7 @@ setInterval(updateClocks, 80);
 // ═══════════════════════════════════════════
 async function loadUI() {
     try {
-        var res = await fetch('/api/config');
+        var res = await authFetch('/api/config');
         var conf = await res.json();
         document.getElementById('mode').value = conf.mode || 'local';
         document.getElementById('host').value = conf.host || '';
@@ -173,8 +183,9 @@ async function loadUI() {
             ? 'Local System (Docker Host)'
             : 'SSH \u2192 ' + (conf.host || '???') + ' (' + (conf.auth === 'password' ? 'password' : 'key') + ')';
         toggleRemote();
-        // Cesium fields
-        document.getElementById('cesiumToken').value = conf.cesium_token || '';
+        // Cesium fields — show placeholder if token is set but masked
+        document.getElementById('cesiumToken').value = '';
+        document.getElementById('cesiumToken').placeholder = conf.has_cesium_token ? '(token set — enter new to replace)' : 'Paste Cesium Ion token';
         document.getElementById('receiverLat').value = conf.receiver_lat || '';
         document.getElementById('receiverLon').value = conf.receiver_lon || '';
         // Load auto-cycle setting
@@ -185,19 +196,24 @@ async function loadUI() {
 
 document.getElementById('configForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    await fetch('/api/config', {
+    await authFetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            mode: document.getElementById('mode').value,
-            host: document.getElementById('host').value,
-            user: document.getElementById('user').value,
-            auth: document.getElementById('auth').value,
-            password: document.getElementById('password').value,
-            cesium_token: document.getElementById('cesiumToken').value,
-            receiver_lat: (function(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; })(document.getElementById('receiverLat').value),
-            receiver_lon: (function(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; })(document.getElementById('receiverLon').value)
-        })
+        body: (function() {
+            var payload = {
+                mode: document.getElementById('mode').value,
+                host: document.getElementById('host').value,
+                user: document.getElementById('user').value,
+                auth: document.getElementById('auth').value,
+                password: document.getElementById('password').value,
+                receiver_lat: (function(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; })(document.getElementById('receiverLat').value),
+                receiver_lon: (function(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; })(document.getElementById('receiverLon').value)
+            };
+            var ct = document.getElementById('cesiumToken').value;
+            if (ct) payload.cesium_token = ct;  // only send if user entered a new one
+            return JSON.stringify(payload);
+        })()
+    })
     });
     closeSettings(); loadUI(); fetchNTP(); fetchGPS();
 });
@@ -211,7 +227,7 @@ async function autoDetectLocation() {
     statusEl.textContent = 'Querying GPS receiver...';
 
     try {
-        var res = await fetch('/api/gps');
+        var res = await authFetch('/api/gps');
         var d = await res.json();
 
         if (d.receiver_lat != null && d.receiver_lon != null) {
@@ -644,7 +660,7 @@ function esc(s) { var el=document.createElement('span'); el.textContent=String(s
 
 async function fetchNTP() {
     try {
-        var res = await fetch('/api/ntp');
+        var res = await authFetch('/api/ntp');
         var d = await res.json();
         var oe = document.getElementById('sysOffset');
         var dot = document.getElementById('statusDot');
@@ -680,7 +696,7 @@ var sweepTimer = 30;
 
 async function fetchGPS() {
     try {
-        var res = await fetch('/api/gps');
+        var res = await authFetch('/api/gps');
         var d = await res.json();
 
         if (d.gps_time && d.gps_time.includes('T')) {
