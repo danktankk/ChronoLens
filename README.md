@@ -1,5 +1,7 @@
 # ChronoLens
 
+> **Based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL).** The original idea and core code are his — this project builds on that foundation. Original project licensed under [MIT](https://github.com/NightHawkATL/ntp-dashboard/blob/main/LICENSE).
+
 A real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Runs as a single Docker container, connects to a remote chrony/gpsd host over SSH, and serves a browser-based UI with 16 live visualizations.
 
 ![Version](https://img.shields.io/badge/version-0.2.6-blue) ![Docker](https://img.shields.io/badge/docker-compose-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Port](https://img.shields.io/badge/port-55234-blue)
@@ -225,11 +227,6 @@ Browser ──────► Flask (port 55234)
 
 ---
 
-## Acknowledgments
-
-This project is based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL), a local web UI to monitor Chrony NTP time and GPS-enabled NTP servers over SSH. The original idea and core code are his work, licensed under the [MIT License](https://github.com/NightHawkATL/ntp-dashboard/blob/main/LICENSE).
-
----
 
 ## License
 
