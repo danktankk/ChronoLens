@@ -506,11 +506,10 @@
             orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 }
         });
 
-        // Auto-rotation
+        // Auto-rotation + continuous render for satellite motion
         var autoRotate = true;
         viewer.clock.onTick.addEventListener(function() {
-            if (!autoRotate) return;
-            viewer.camera.rotate(Cesium.Cartesian3.UNIT_Z, -0.001);
+            if (autoRotate) viewer.camera.rotate(Cesium.Cartesian3.UNIT_Z, -0.001);
             viewer.scene.requestRender();
         });
         var idleTimer = null;
@@ -777,18 +776,42 @@
                 updateSatellites();
             }, 10000);
 
-            // Position recompute every 5s (GPS sats move slowly at 20,200km)
-            setInterval(function() {
-                var now = new Date();
-                for (var prn in tleData) {
-                    if (!satEntities[prn]) continue;
-                    var pos = getSatPosition(tleData[prn].satrec, now);
+            // Smooth satellite motion: sample positions ahead and let Cesium interpolate
+            function buildSampledPositions(satrec) {
+                var prop = new Cesium.SampledPositionProperty();
+                prop.setInterpolationOptions({
+                    interpolationDegree: 3,
+                    interpolationAlgorithm: Cesium.LagrangePolynomialApproximation
+                });
+                var now = Date.now();
+                // Sample 30 minutes ahead in 60-second steps
+                for (var s = 0; s <= 30; s++) {
+                    var t = new Date(now + s * 60000);
+                    var pos = getSatPosition(satrec, t);
                     if (pos) {
-                        satEntities[prn].position = Cesium.Cartesian3.fromDegrees(pos.lon, pos.lat, pos.alt);
+                        var jd = Cesium.JulianDate.fromDate(t);
+                        prop.addSample(jd, Cesium.Cartesian3.fromDegrees(pos.lon, pos.lat, pos.alt));
                     }
                 }
+                return prop;
+            }
+
+            // Apply sampled positions to all satellites
+            function refreshOrbitalMotion() {
+                for (var prn in tleData) {
+                    if (!satEntities[prn]) continue;
+                    satEntities[prn].position = buildSampledPositions(tleData[prn].satrec);
+                }
                 viewer.scene.requestRender();
-            }, 5000);
+            }
+
+            // Enable real-time clock so Cesium evaluates sampled positions
+            viewer.clock.shouldAnimate = true;
+            viewer.clock.multiplier = 1; // real-time
+
+            // Initial motion + refresh every 10 min (re-sample ahead)
+            refreshOrbitalMotion();
+            setInterval(refreshOrbitalMotion, 600000);
         }
 
         // ── NAV DISK CONTROLLER ──
