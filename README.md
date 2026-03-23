@@ -3,18 +3,10 @@
 </p>
 
 > **Based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL).**  
-> The original code and getting this project started are thanks to him — this project builds on that foundation.  
+> The original code and getting this project started are thanks to him alone — this project builds on that foundation.  
 > Original project licensed under [MIT](https://github.com/NightHawkATL/ntp-dashboard/blob/main/LICENSE).  
 >  
-> If you find this useful, consider giving his project a star:
->
-> <a class="github-button"
->    href="https://github.com/NightHawkATL/ntp-dashboard"
->    data-icon="octicon-star"
->    data-show-count="true"
->    aria-label="Star NightHawkATL/ntp-dashboard on GitHub">
->    Star
-> </a>
+> If you find this useful, consider giving his project a ⭐ [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard)
 
 A real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Runs as a single Docker container, connects to a remote chrony/gpsd host over SSH, and serves a browser-based UI with 16 live visualizations.
 
