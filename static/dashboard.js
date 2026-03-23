@@ -459,7 +459,7 @@ async function fetchNTP() {
             return '<tr class="'+(a?'row-active':'')+'">' +
                 '<td style="opacity:0.7;font-size:0.8em;">'+esc(typeLabel)+'</td>' +
                 '<td>'+esc(s.name)+'</td>' +
-                '<td>'+esc(s.stratum)+'</td>' +
+                '<td>'+esc(s.stratum_label || s.stratum)+'</td>' +
                 '<td style="color:'+stateColor+'">'+esc(stateLabel)+'</td>' +
                 '<td>'+esc(s.poll)+'</td><td>'+esc(s.reach)+'</td>' +
                 '<td>'+esc(s.lastrx)+'</td><td>'+esc(s.last_sample)+'</td></tr>';
