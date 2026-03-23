@@ -55,7 +55,7 @@ def decrypt_pwd(encrypted_pwd):
 def find_ssh_key():
     if not os.path.isdir(SSH_KEY_DIR):
         return None
-    for name in ['id_rsa', 'id_ed25519', 'id_ecdsa', 'key', 'cc']:
+    for name in ['id_rsa', 'id_ed25519', 'ed25519', 'id_ecdsa', 'key', 'cc']:
         path = os.path.join(SSH_KEY_DIR, name)
         if os.path.isfile(path):
             return path
