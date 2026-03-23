@@ -225,6 +225,12 @@ Browser ──────► Flask (port 55234)
 
 ---
 
+## Acknowledgments
+
+This project is based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL), a local web UI to monitor Chrony NTP time and GPS-enabled NTP servers over SSH. The original idea and core code are his work, licensed under the [MIT License](https://github.com/NightHawkATL/ntp-dashboard/blob/main/LICENSE).
+
+---
+
 ## License
 
 MIT
