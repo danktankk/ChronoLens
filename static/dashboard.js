@@ -1,15 +1,5 @@
-// ── ChronoLens Dashboard v0.4.0 ──
+// ── ChronoLens Dashboard v0.4.1 ──
 // Theme-aware canvas globe + radar
-
-// Authenticated fetch wrapper
-function authFetch(url, opts) {
-    opts = opts || {};
-    opts.headers = opts.headers || {};
-    if (typeof CHRONOLENS_AUTH_TOKEN !== 'undefined' && CHRONOLENS_AUTH_TOKEN) {
-        opts.headers['Authorization'] = 'Bearer ' + CHRONOLENS_AUTH_TOKEN;
-    }
-    return fetch(url, opts);
-}
 
 // ═══════════════════════════════════════════
 // 1. THEME ENGINE
@@ -169,7 +159,7 @@ setInterval(updateClocks, 80);
 // ═══════════════════════════════════════════
 async function loadUI() {
     try {
-        var res = await authFetch('/api/config');
+        var res = await fetch('/api/config');
         var conf = await res.json();
         document.getElementById('mode').value = conf.mode || 'local';
         document.getElementById('host').value = conf.host || '';
@@ -209,7 +199,7 @@ document.getElementById('configForm').addEventListener('submit', async function(
     };
     var ct = document.getElementById('cesiumToken').value;
     if (ct) payload.cesium_token = ct;  // only send if user entered a new one
-    await authFetch('/api/config', {
+    await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -226,7 +216,7 @@ async function autoDetectLocation() {
     statusEl.textContent = 'Querying GPS receiver...';
 
     try {
-        var res = await authFetch('/api/gps');
+        var res = await fetch('/api/gps');
         var d = await res.json();
 
         if (d.receiver_lat != null && d.receiver_lon != null) {
@@ -659,7 +649,7 @@ function esc(s) { var el=document.createElement('span'); el.textContent=String(s
 
 async function fetchNTP() {
     try {
-        var res = await authFetch('/api/ntp');
+        var res = await fetch('/api/ntp');
         var d = await res.json();
         var oe = document.getElementById('sysOffset');
         var dot = document.getElementById('statusDot');
@@ -695,7 +685,7 @@ var sweepTimer = 30;
 
 async function fetchGPS() {
     try {
-        var res = await authFetch('/api/gps');
+        var res = await fetch('/api/gps');
         var d = await res.json();
 
         if (d.gps_time && d.gps_time.includes('T')) {

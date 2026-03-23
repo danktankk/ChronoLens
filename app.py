@@ -1,36 +1,11 @@
 import os, json, re, threading, time
-from flask import Flask, render_template, jsonify, request, make_response, redirect
+from flask import Flask, render_template, jsonify, request
 import paramiko
 from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-APP_VERSION = "v0.4.0"
-
-# --- Authentication ---
-AUTH_TOKEN = os.environ.get('CHRONOLENS_AUTH_TOKEN', '')
-
-@app.before_request
-def check_auth():
-    if not AUTH_TOKEN:
-        return  # No token configured = no auth enforced (backwards compat)
-    # Skip auth for static files (CSS, JS, images)
-    if request.path.startswith('/static/'):
-        return
-    if request.path.startswith('/api/'):
-        provided = request.headers.get('Authorization', '')
-        if provided != f'Bearer {AUTH_TOKEN}':
-            return jsonify({"error": "unauthorized"}), 401
-    else:
-        # Page routes: check token via query param or cookie
-        token = request.args.get('token') or request.cookies.get('chronolens_auth')
-        if token != AUTH_TOKEN:
-            return 'Unauthorized. Append ?token=YOUR_TOKEN to the URL.', 401
-        # Set auth cookie on first visit with ?token= so subsequent visits don't need it
-        if request.args.get('token') and not request.cookies.get('chronolens_auth'):
-            resp = make_response(redirect(request.path))
-            resp.set_cookie('chronolens_auth', AUTH_TOKEN, httponly=True, samesite='Strict', max_age=86400*30)
-            return resp
+APP_VERSION = "v0.4.1"
 
 @app.after_request
 def security_headers(response):
@@ -281,7 +256,7 @@ DEFAULT_CESIUM_TOKEN = os.environ.get('CESIUM_TOKEN', '')
 
 @app.route('/')
 def index():
-    return render_template('index.html', app_version=APP_VERSION, auth_token=AUTH_TOKEN)
+    return render_template('index.html', app_version=APP_VERSION)
 
 @app.route('/satellite')
 def satellite():
@@ -292,7 +267,7 @@ def satellite():
     except (ValueError, TypeError): lat = 39.0
     try: lon = float(conf.get('receiver_lon'))
     except (ValueError, TypeError): lon = -98.0
-    return render_template('satellite.html', cesium_token=token, receiver_lat=lat, receiver_lon=lon, app_version=APP_VERSION, auth_token=AUTH_TOKEN)
+    return render_template('satellite.html', cesium_token=token, receiver_lat=lat, receiver_lon=lon, app_version=APP_VERSION)
 
 @app.route('/api/ntp')
 def get_ntp():
