@@ -15,11 +15,26 @@ var VizEngine = (function() {
     // Check if an NTP source name is active (synced or candidate)
     function isSourceActive(name, sources) {
         for (var j = 0; j < sources.length; j++) {
-            if (sources[j].name === name && (sources[j].state.includes('*') || sources[j].state.includes('+'))) {
-                return true;
+            if (sources[j].name === name) {
+                var ss = sources[j].source_state || '';
+                var ms = sources[j].mode_state || '';
+                return ss === 'synced' || ss === 'combined' || ms.includes('*') || ms.includes('+');
             }
         }
         return false;
+    }
+
+    // GPS satellite → sub-satellite geographic position
+    var R_EARTH = 6371, H_GPS = 20200, R_RATIO = R_EARTH / (R_EARTH + H_GPS);
+    function satSubPoint(recLat, recLon, azDeg, elDeg) {
+        var az = azDeg * Math.PI / 180, el = elDeg * Math.PI / 180;
+        var lat1 = recLat * Math.PI / 180, lon1 = recLon * Math.PI / 180;
+        var nadir = Math.asin(R_RATIO * Math.cos(el));
+        var ca = Math.PI / 2 - el - nadir;
+        var lat2 = Math.asin(Math.sin(lat1) * Math.cos(ca) + Math.cos(lat1) * Math.sin(ca) * Math.cos(az));
+        var lon2 = lon1 + Math.atan2(Math.sin(az) * Math.sin(ca) * Math.cos(lat1),
+                                      Math.cos(ca) - Math.sin(lat1) * Math.sin(lat2));
+        return [lat2 * 180 / Math.PI, lon2 * 180 / Math.PI];
     }
 
     // Draw a satellite dot with optional glow, pulse ring, and PRN label
@@ -545,7 +560,7 @@ var VizEngine = (function() {
             ctx.fillStyle = rgb(isActive ? TC.locked : TC.labelDim, isActive ? 0.9 : 0.7);
             ctx.textAlign = 'left';
             var name = src.name.length > 14 ? src.name.substring(0, 13) + '\u2026' : src.name;
-            ctx.fillText(src.state + ' ' + name, pad, y + rowH/2 + 3);
+            ctx.fillText((src.mode_state || '') + ' ' + name, pad, y + rowH/2 + 3);
 
             // Bit cells
             for (var b = 0; b < 8; b++) {
@@ -720,57 +735,182 @@ var VizEngine = (function() {
     }
 
     // ═══════════════════════════════════════════════════════
-    // 11. SIGNAL RADAR — Spider chart of SNR
+    // 11. RADAR SCOPE — Real satellite positions + sweep
     // ═══════════════════════════════════════════════════════
-    function drawSignalRadar(ctx, w, h, t, sats, ntpData, TC) {
+    function drawRadarScope(ctx, w, h, t, sats, ntpData, TC) {
         sats = safeSats(sats); ctx.clearRect(0,0,w,h);
-        if (!sats.length) { drawEmpty(ctx,w,h,TC,'NO SIGNAL DATA'); return; }
-
         var cx = w/2, cy = h/2, maxR = Math.min(w,h)/2 - 30;
-        var numAxes = Math.max(sats.length, 3);
-        var angleStep = Math.PI * 2 / numAxes;
 
-        for (var ring = 1; ring <= 5; ring++) {
-            var r = maxR * ring / 5;
-            ctx.beginPath();
-            for (var i = 0; i <= numAxes; i++) {
-                var a = i * angleStep - Math.PI/2;
-                var x = cx + r*Math.cos(a), y = cy + r*Math.sin(a);
-                if (i === 0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        // Subtle scope background glow
+        var bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+        bg.addColorStop(0, rgb(TC.locked, 0.04)); bg.addColorStop(1, 'transparent');
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+
+        // Elevation rings: 0° at edge, 90° at center
+        for (var el = 0; el <= 90; el += 15) {
+            var r = maxR * (90 - el) / 90;
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.strokeStyle = rgb(TC.wire, el % 30 === 0 ? 0.15 : 0.06);
+            ctx.lineWidth = el === 0 ? 1 : 0.5; ctx.stroke();
+            if (el > 0 && el < 90 && el % 30 === 0) {
+                ctx.font = '400 8px IBM Plex Mono, monospace';
+                ctx.fillStyle = rgb(TC.labelDim, 0.4); ctx.textAlign = 'left';
+                ctx.fillText(el + '\u00b0', cx + r + 3, cy - 2);
             }
-            ctx.closePath();
-            ctx.strokeStyle = rgb(TC.wire, 0.06); ctx.lineWidth = 0.5; ctx.stroke();
-        }
-        for (var i = 0; i < numAxes; i++) {
-            var a = i * angleStep - Math.PI/2;
-            ctx.beginPath(); ctx.moveTo(cx,cy);
-            ctx.lineTo(cx+maxR*Math.cos(a), cy+maxR*Math.sin(a));
-            ctx.strokeStyle = rgb(TC.wire, 0.08); ctx.lineWidth = 0.5; ctx.stroke();
         }
 
+        // Compass spokes + labels
+        var dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        for (var i = 0; i < 8; i++) {
+            var a = i * Math.PI / 4 - Math.PI / 2;
+            ctx.beginPath(); ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + maxR * Math.cos(a), cy + maxR * Math.sin(a));
+            ctx.strokeStyle = rgb(TC.wire, i % 2 === 0 ? 0.12 : 0.05);
+            ctx.lineWidth = 0.5; ctx.stroke();
+            var lx = cx + (maxR + 14) * Math.cos(a), ly = cy + (maxR + 14) * Math.sin(a);
+            ctx.font = i % 2 === 0 ? '600 10px IBM Plex Mono, monospace' : '400 8px IBM Plex Mono, monospace';
+            ctx.fillStyle = rgb(TC.label, i % 2 === 0 ? 0.6 : 0.3);
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(dirs[i], lx, ly);
+        }
+        ctx.textBaseline = 'alphabetic';
+
+        // Sweep line (~6s rotation)
+        var sweepAngle = (t * 0.001) % (Math.PI * 2);
+
+        // Phosphor trail (wide gradient arc)
+        var trailArc = 0.6;
+        for (var step = 40; step >= 0; step--) {
+            var ta = sweepAngle - (step / 40) * trailArc - Math.PI / 2;
+            var alpha = (1 - step / 40) * 0.12;
+            ctx.beginPath(); ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + maxR * Math.cos(ta), cy + maxR * Math.sin(ta));
+            ctx.strokeStyle = rgb(TC.locked, alpha); ctx.lineWidth = 2; ctx.stroke();
+        }
+
+        // Bright leading edge
+        var sa = sweepAngle - Math.PI / 2;
+        ctx.beginPath(); ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + maxR * Math.cos(sa), cy + maxR * Math.sin(sa));
+        ctx.strokeStyle = rgb(TC.locked, 0.6); ctx.lineWidth = 2.5; ctx.stroke();
+
+        // Satellites at real az/el positions
+        if (!sats.length) { drawEmpty(ctx, w, h, TC, 'AWAITING SATELLITES'); return; }
+
+        for (var i = 0; i < sats.length; i++) {
+            var s = sats[i];
+            var azRad = s.az * Math.PI / 180;
+            var r = maxR * (90 - s.el) / 90;
+            var sx = cx + r * Math.sin(azRad), sy = cy - r * Math.cos(azRad);
+
+            // How recently the sweep passed this satellite
+            var satAngle = azRad;
+            var diff = ((sweepAngle - satAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+            var fade = Math.max(0, 1 - diff / (Math.PI * 2));
+            fade = fade * fade * fade; // cubic decay — fast bright, slow dim
+
+            var col = s.used ? TC.locked : TC.dim;
+            var baseA = s.used ? 0.2 : 0.08;
+            var alpha = baseA + fade * (s.used ? 0.8 : 0.5);
+            var dotSz = (s.used ? 4.5 : 2.5) * (1 + fade * 0.6);
+
+            // Phosphor bloom on fresh sweep
+            if (fade > 0.3 && s.used) {
+                var glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, dotSz * 5);
+                glow.addColorStop(0, rgb(col, fade * 0.25)); glow.addColorStop(1, 'transparent');
+                ctx.fillStyle = glow; ctx.fillRect(sx - dotSz * 5, sy - dotSz * 5, dotSz * 10, dotSz * 10);
+            }
+
+            ctx.beginPath(); ctx.arc(sx, sy, dotSz, 0, Math.PI * 2);
+            ctx.fillStyle = rgb(col, alpha); ctx.fill();
+
+            // PRN label fades with blip
+            if (alpha > 0.35) {
+                ctx.font = (s.used ? '600 ' : '400 ') + '8px IBM Plex Mono, monospace';
+                ctx.fillStyle = rgb(s.used ? TC.label : TC.labelDim, Math.min(alpha, 0.9));
+                ctx.textAlign = 'left'; ctx.fillText(s.PRN, sx + dotSz + 3, sy + 3);
+            }
+        }
+
+        // Center crosshair
+        ctx.beginPath(); ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy);
+        ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6);
+        ctx.strokeStyle = rgb(TC.center, 0.3); ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 11b. SYNC PULSE — Oscilloscope-style offset waveform
+    // ═══════════════════════════════════════════════════════
+    function drawSyncPulse(ctx, w, h, t, sats, ntpData, TC) {
+        ctx.clearRect(0,0,w,h);
+        var pad = 45, gw = w - pad * 2, gh = h - pad * 2, cy = pad + gh / 2;
+
+        // CRT-style vignette
+        var vig = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w, h) * 0.6);
+        vig.addColorStop(0, rgb(TC.locked, 0.03)); vig.addColorStop(1, 'transparent');
+        ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h);
+
+        drawFrame(ctx, pad, pad, gw, gh, TC);
+        drawGrid(ctx, pad, pad, gw, gh, 10, 6, TC);
+
+        // Zero line
+        ctx.beginPath(); ctx.moveTo(pad, cy); ctx.lineTo(pad + gw, cy);
+        ctx.strokeStyle = rgb(TC.center, 0.15); ctx.lineWidth = 1; ctx.stroke();
+
+        var data = trackingHistory;
+        if (data.length < 2) { drawEmpty(ctx, w, h, TC, 'ACQUIRING SYNC DATA\u2026'); return; }
+
+        // Use lastOffset for the waveform
+        var vals = [];
+        for (var i = 0; i < data.length; i++) vals.push(data[i].lastOffset || 0);
+        var maxAbs = 0.1;
+        for (var i = 0; i < vals.length; i++) maxAbs = Math.max(maxAbs, Math.abs(vals[i]));
+        maxAbs *= 1.3;
+
+        function oToY(v) { return cy - (v / maxAbs) * (gh / 2); }
+
+        // Glow pass (wider, softer)
+        ctx.save(); ctx.shadowColor = rgb(TC.locked, 0.4); ctx.shadowBlur = 10;
         ctx.beginPath();
-        for (var i = 0; i < sats.length; i++) {
-            var snr = clamp(sats[i].ss/50, 0, 1);
-            var a = i * angleStep - Math.PI/2;
-            var x = cx + snr*maxR*Math.cos(a), y = cy + snr*maxR*Math.sin(a);
-            if (i === 0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        for (var i = 0; i < data.length; i++) {
+            var x = pad + (i / (MAX_TRACKING - 1)) * gw;
+            if (i === 0) ctx.moveTo(x, oToY(vals[i])); else ctx.lineTo(x, oToY(vals[i]));
         }
-        ctx.closePath();
-        ctx.fillStyle = rgb(TC.locked, 0.08); ctx.fill();
-        ctx.strokeStyle = rgb(TC.locked, 0.5); ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.strokeStyle = rgb(TC.locked, 0.3); ctx.lineWidth = 3; ctx.stroke();
+        ctx.restore();
 
-        for (var i = 0; i < sats.length; i++) {
-            var s = sats[i], snr = clamp(s.ss/50, 0, 1);
-            var a = i * angleStep - Math.PI/2;
-            var x = cx + snr*maxR*Math.cos(a), y = cy + snr*maxR*Math.sin(a);
-            drawSatDot(ctx, x, y, s, t, i, TC, { fontSize: 7 });
-
-            // Axis label at outer edge (centered, not default left-aligned)
-            var lx = cx + (maxR+15)*Math.cos(a), ly = cy + (maxR+15)*Math.sin(a);
-            ctx.font = (s.used?'600 ':'400 ')+'9px IBM Plex Mono, monospace';
-            ctx.fillStyle = rgb(s.used?TC.label:TC.labelDim, s.used?0.9:0.7);
-            ctx.textAlign = 'center'; ctx.fillText(s.PRN, lx, ly+3);
+        // Main waveform
+        ctx.beginPath();
+        for (var i = 0; i < data.length; i++) {
+            var x = pad + (i / (MAX_TRACKING - 1)) * gw;
+            if (i === 0) ctx.moveTo(x, oToY(vals[i])); else ctx.lineTo(x, oToY(vals[i]));
         }
+        ctx.strokeStyle = rgb(TC.locked, 0.9); ctx.lineWidth = 1.5; ctx.stroke();
+
+        // Current value dot
+        var lastX = pad + ((data.length - 1) / (MAX_TRACKING - 1)) * gw;
+        drawGlowDot(ctx, lastX, oToY(vals[vals.length - 1]), TC.locked);
+
+        // Quality assessment
+        var lastVal = Math.abs(vals[vals.length - 1]);
+        var quality, qCol;
+        if (lastVal < 100) { quality = 'EXCELLENT'; qCol = TC.locked; }
+        else if (lastVal < 1000) { quality = 'GOOD'; qCol = TC.locked; }
+        else if (lastVal < 10000) { quality = 'FAIR'; qCol = TC.center; }
+        else { quality = 'POOR'; qCol = [255, 100, 100]; }
+
+        // Labels
+        ctx.font = '600 10px IBM Plex Mono, monospace';
+        ctx.fillStyle = rgb(TC.label, 0.8); ctx.textAlign = 'left';
+        ctx.fillText('SYNC PULSE', pad, pad - 10);
+        ctx.font = '600 10px IBM Plex Mono, monospace';
+        ctx.fillStyle = rgb(qCol, 0.9); ctx.textAlign = 'right';
+        ctx.fillText(quality + ' \u2502 ' + formatNano(vals[vals.length - 1]), pad + gw, pad - 10);
+
+        ctx.font = '400 8px IBM Plex Mono, monospace';
+        ctx.fillStyle = rgb(TC.labelDim, 0.6); ctx.textAlign = 'right';
+        ctx.fillText('+' + formatNano(maxAbs), pad - 4, pad + 8);
+        ctx.fillText('\u2212' + formatNano(maxAbs), pad - 4, pad + gh);
+        ctx.fillText('0', pad - 4, cy + 3);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -811,9 +951,11 @@ var VizEngine = (function() {
             var angleStep = Math.PI * 2 / sources.length;
             for (var i = 0; i < sources.length; i++) {
                 var src = sources[i];
-                var strat = parseInt(src.stratum) || 1;
-                if (strat < 1) strat = 1;
-                var r = Math.min(strat, maxStrat) * 55;
+                var strat = parseInt(src.stratum);
+                if (isNaN(strat) || strat < 0) strat = 1;
+                // Stratum 0 = refclock: place at ring 1 (closest to server)
+                var ringStrat = strat === 0 ? 0.6 : Math.min(strat, maxStrat);
+                var r = ringStrat * 55;
                 var angle = i * angleStep - Math.PI/2 + Math.sin(t*0.0003)*0.1;
                 var nx = cx + r*Math.cos(angle), ny = cy + r*Math.sin(angle);
                 var isActive = isSourceActive(src.name, sources);
@@ -844,9 +986,10 @@ var VizEngine = (function() {
                 ctx.textAlign = 'center';
                 var sname = src.name.length > 16 ? src.name.substring(0,15)+'\u2026' : src.name;
                 ctx.fillText(sname, nx, ny+18);
-                // State badge
+                // Type + stratum badge
+                var badge = (src.source_type === 'refclock' ? 'REF' : 'STR ' + strat);
                 ctx.font = '600 9px IBM Plex Mono, monospace';
-                ctx.fillText(src.state, nx, ny + 3);
+                ctx.fillText(badge, nx, ny + 3);
             }
         }
     }
@@ -993,15 +1136,21 @@ var VizEngine = (function() {
     function initPlanet(canvas, w, h, sats, ntpData, TC) {
         sats = safeSats(sats);
 
-        // Always update markers from latest satellite data
+        // Get receiver position from config inputs or default to Florida
+        var recLat = 29.5, recLon = -82.5;
+        var latEl = document.getElementById('receiverLat');
+        var lonEl = document.getElementById('receiverLon');
+        if (latEl && latEl.value) recLat = parseFloat(latEl.value) || recLat;
+        if (lonEl && lonEl.value) recLon = parseFloat(lonEl.value) || recLon;
+
+        // Compute real sub-satellite positions from az/el + receiver location
         cobeMarkers = [];
         for (var i = 0; i < sats.length; i++) {
             var s = sats[i];
             if (s.el > 0 || s.az > 0) {
-                var lat = 29.5 + (s.el - 45) * 0.5 + Math.sin(s.az * 0.017) * 20;
-                var lon = -82.5 + (s.az - 180) * 0.3;
+                var pos = satSubPoint(recLat, recLon, s.az, s.el);
                 cobeMarkers.push({
-                    location: [lat, lon],
+                    location: pos,
                     size: s.used ? 0.12 : 0.05
                 });
             }
@@ -1036,14 +1185,13 @@ var VizEngine = (function() {
     // REGISTRY
     // ═══════════════════════════════════════════════════════
     var registry = {
-        'globe':          { name: '3D Globe',           category: 'GPS', draw: null, desc: 'Rotating 3D wireframe globe with satellites on orbital rings. Uses GPS azimuth/elevation data.' },
-        'planet':         { name: 'Planet Earth',       category: 'GPS', draw: drawPlanetEarth, desc: 'Full-color rotating Earth with continents, oceans, atmosphere glow, and GPS satellites in orbit.' },
-        'radar':          { name: 'Radar Scope',        category: 'GPS', draw: null, desc: 'Classic radar sweep showing satellite positions by azimuth and elevation from GPS receiver.' },
+        'planet':         { name: 'Planet Earth',       category: 'GPS', draw: drawPlanetEarth, desc: 'Rotating Earth with real satellite ground-track positions computed from receiver az/el.' },
+        'radar':          { name: 'Radar Scope',        category: 'GPS', draw: drawRadarScope, desc: 'Military-style radar with real satellite positions. Sweep line pings satellites with phosphor fade.' },
         'skyline':        { name: 'Signal Skyline',     category: 'GPS', draw: drawSkyline, desc: 'SNR bar chart per satellite. Taller bars = stronger signal. Green = locked/used.' },
         'heatmap':        { name: 'Polar Heatmap',      category: 'GPS', draw: drawHeatmap, desc: 'Polar plot with signal strength heat blobs. Shows coverage gaps in the sky.' },
         'web':            { name: 'Constellation Web',  category: 'GPS', draw: drawWeb, desc: 'Proximity graph connecting nearby satellites. Reveals constellation geometry.' },
         'horizon':        { name: 'Horizon Sweep',      category: 'GPS', draw: drawHorizon, desc: 'Panoramic horizon view of all satellites by compass bearing and elevation angle.' },
-        'signal-radar':   { name: 'Signal Radar',       category: 'GPS', draw: drawSignalRadar, desc: 'Spider/radar chart of SNR values. Each axis is one satellite.' },
+        'sync-pulse':     { name: 'Sync Pulse',         category: 'NTP', draw: drawSyncPulse, desc: 'Oscilloscope-style last-offset waveform with sync quality rating and CRT glow.' },
         'chrony-dash':    { name: 'Chrony Dashboard',   category: 'NTP', draw: drawChronyDash, desc: 'All chrony tracking metrics as instrument cells: offset, frequency, stratum, skew, root delay.' },
         'timeline':       { name: 'Offset Timeline',    category: 'NTP', draw: drawTimeline, desc: 'System clock offset over time with RMS band. Shows how well the clock is disciplined.' },
         'freq-drift':     { name: 'Frequency Drift',    category: 'NTP', draw: drawFreqDrift, desc: 'Clock frequency error (ppm) over time. Tracks oscillator stability.' },

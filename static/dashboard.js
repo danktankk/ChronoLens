@@ -1,4 +1,4 @@
-// ── ChronoLens Dashboard v0.4.1 ──
+// ── ChronoLens Dashboard v0.5.0 ──
 // Theme-aware canvas globe + radar
 
 // ═══════════════════════════════════════════
@@ -502,7 +502,7 @@ function drawRadar(ctx, cw, ch, t) {
 // ═══════════════════════════════════════════
 // 8. ANIMATION LOOP + VIZ PICKER
 // ═══════════════════════════════════════════
-var activeVizLeft = localStorage.getItem('chronolens-viz-left') || 'globe';
+var activeVizLeft = localStorage.getItem('chronolens-viz-left') || 'planet';
 var activeVizRight = localStorage.getItem('chronolens-viz-right') || 'radar';
 var lastNtpData = {};
 
@@ -541,15 +541,9 @@ function drawVizOnCanvas(vizKey, ctx, cw, ch, t, side) {
 
     ctx.save();
     try {
-        if (vizKey === 'globe') {
-            drawGlobe(ctx, cw, ch, t);
-        } else if (vizKey === 'radar') {
-            drawRadar(ctx, cw, ch, t);
-        } else {
-            var viz = VizEngine.registry[vizKey];
-            if (viz && viz.draw) {
-                viz.draw(ctx, cw, ch, t, currentSats, lastNtpData, TC);
-            }
+        var viz = VizEngine.registry[vizKey];
+        if (viz && viz.draw) {
+            viz.draw(ctx, cw, ch, t, currentSats, lastNtpData, TC);
         }
     } finally {
         ctx.restore();
@@ -605,7 +599,7 @@ function selectViz(panel, vizKey) {
         localStorage.setItem('chronolens-viz-left', vizKey);
         document.getElementById('vizLeftTitle').textContent = VizEngine.registry[vizKey].name;
         var strip = document.getElementById('satCountStrip');
-        if (strip) strip.style.display = (vizKey === 'globe' || vizKey === 'radar') ? 'flex' : 'none';
+        if (strip) strip.style.display = (vizKey === 'planet' || vizKey === 'radar') ? 'flex' : 'none';
     } else {
         activeVizRight = vizKey;
         localStorage.setItem('chronolens-viz-right', vizKey);
@@ -639,7 +633,7 @@ document.addEventListener('keydown', function(e) {
     var regR = VizEngine.registry[activeVizRight];
     if (regR) document.getElementById('vizRightTitle').textContent = regR.name;
     var strip = document.getElementById('satCountStrip');
-    if (strip) strip.style.display = (activeVizLeft === 'globe' || activeVizLeft === 'radar') ? 'flex' : 'none';
+    if (strip) strip.style.display = (activeVizLeft === 'planet' || activeVizLeft === 'radar') ? 'flex' : 'none';
 })();
 
 // ═══════════════════════════════════════════
@@ -657,7 +651,7 @@ async function fetchNTP() {
             oe.textContent = 'Disconnected'; oe.style.color = 'var(--accent-bad)'; oe.className = 'metric-value';
             dot.classList.add('error');
             document.getElementById('ntpTableBody').innerHTML =
-                '<tr><td colspan="7" style="padding:1.2rem;color:var(--accent-bad);">' + esc(d.error) + '</td></tr>';
+                '<tr><td colspan="8" style="padding:1.2rem;color:var(--accent-bad);">' + esc(d.error) + '</td></tr>';
             return;
         }
         dot.classList.remove('error');
@@ -669,12 +663,30 @@ async function fetchNTP() {
             VizEngine.pushTracking(d.tracking);
         }
 
+        // Show server stratum badge
+        if (d.tracking && d.tracking.stratum != null) {
+            document.getElementById('serverStratumBadge').textContent = 'Server Stratum ' + d.tracking.stratum + ' \u00b7 chronyc';
+        }
+
+        var TYPE_LABELS = {refclock: '\u2693 Refclock', server: '\u2191 Remote', peer: '\u21c4 Peer', unknown: '? Unknown'};
+        var STATE_LABELS = {synced: '\u2713 Synced', combined: '+ Combined', excluded: '\u2212 Excluded',
+            unknown: '? Unreach', falseticker: '\u2717 False', variable: '~ Variable'};
+        var STATE_COLORS = {synced: 'var(--accent-3)', combined: 'var(--accent-1)', excluded: 'var(--text-tertiary)',
+            unknown: 'var(--accent-2)', falseticker: 'var(--accent-bad)', variable: 'var(--accent-2-dim)'};
+
         document.getElementById('ntpTableBody').innerHTML = (d.sources||[]).map(function(s) {
-            var a = s.state.includes('*')||s.name.includes('PPS')||s.name.includes('GPS');
-            return '<tr class="'+(a?'row-active':'')+'"><td>'+esc(s.state)+'</td><td>'+esc(s.name)+
-                '</td><td>'+esc(s.stratum)+'</td><td>'+esc(s.poll)+'</td><td>'+esc(s.reach)+
-                '</td><td>'+esc(s.lastrx)+'</td><td>'+esc(s.last_sample)+'</td></tr>';
-        }).join('') || '<tr><td colspan="7" style="padding:1.2rem;text-align:center;color:var(--text-tertiary);">No sources</td></tr>';
+            var a = s.source_state === 'synced';
+            var typeLabel = TYPE_LABELS[s.source_type] || s.source_type;
+            var stateLabel = STATE_LABELS[s.source_state] || s.source_state;
+            var stateColor = STATE_COLORS[s.source_state] || '';
+            return '<tr class="'+(a?'row-active':'')+'">' +
+                '<td style="opacity:0.7;font-size:0.8em;">'+esc(typeLabel)+'</td>' +
+                '<td>'+esc(s.name)+'</td>' +
+                '<td>'+esc(s.stratum)+'</td>' +
+                '<td style="color:'+stateColor+'">'+esc(stateLabel)+'</td>' +
+                '<td>'+esc(s.poll)+'</td><td>'+esc(s.reach)+'</td>' +
+                '<td>'+esc(s.lastrx)+'</td><td>'+esc(s.last_sample)+'</td></tr>';
+        }).join('') || '<tr><td colspan="8" style="padding:1.2rem;text-align:center;color:var(--text-tertiary);">No sources</td></tr>';
     } catch(e) { console.error('NTP fail', e); }
 }
 
