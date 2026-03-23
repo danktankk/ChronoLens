@@ -1,5 +1,5 @@
-// ── ChronoLens Dashboard v0.5.0 ──
-// Theme engine, config UI, clocks, viz picker, data polling
+// ── ChronoLens Dashboard v0.4.1 ──
+// Theme-aware canvas globe + radar
 
 // ═══════════════════════════════════════════
 // 1. THEME ENGINE
@@ -240,6 +240,8 @@ async function autoDetectLocation() {
 var globeCanvas = document.getElementById('globeCanvas');
 var gCtx = globeCanvas.getContext('2d');
 var GW = 420, GH = 420;
+var globeRotY = 0;
+var globeTilt = -0.35;
 var currentSats = [];
 
 var radarCanvas = document.getElementById('radarCanvas');
@@ -277,9 +279,230 @@ var RW = 420, RH = 420;
 })();
 
 // ═══════════════════════════════════════════
-// 6. ANIMATION LOOP + VIZ PICKER (all viz rendering delegated to VizEngine)
+// 6. 3D GLOBE
 // ═══════════════════════════════════════════
-var activeVizLeft = localStorage.getItem('chronolens-viz-left') || 'planet';
+function rotX(p, a) { var c=Math.cos(a), s=Math.sin(a); return [p[0], p[1]*c-p[2]*s, p[1]*s+p[2]*c]; }
+function rotY(p, a) { var c=Math.cos(a), s=Math.sin(a); return [p[0]*c+p[2]*s, p[1], -p[0]*s+p[2]*c]; }
+function project(p, cx, cy) { var d=600, sc=d/(d+p[2]); return {x:cx+p[0]*sc, y:cy+p[1]*sc, z:p[2], s:sc}; }
+function ll2xyz(la, lo, r) {
+    var a=la*Math.PI/180, b=lo*Math.PI/180;
+    return [r*Math.cos(a)*Math.sin(b), -r*Math.sin(a), r*Math.cos(a)*Math.cos(b)];
+}
+
+// Draw a wireframe arc on the globe, handling front/back face breaks
+function drawGlobeArc(ctx, points, gcx, gcy, angle, frontAlpha, backAlpha, lineW) {
+    ctx.beginPath(); var first = true;
+    for (var i = 0; i < points.length; i++) {
+        var p = points[i];
+        p = rotX(p, globeTilt); p = rotY(p, angle);
+        var pp = project(p, gcx, gcy);
+        if (p[2] > 0) {
+            if (first) { ctx.moveTo(pp.x, pp.y); first = false; }
+            else ctx.lineTo(pp.x, pp.y);
+        } else {
+            ctx.strokeStyle = rgb(TC.wire, backAlpha); ctx.lineWidth = 0.5; ctx.stroke();
+            ctx.beginPath(); first = true;
+        }
+    }
+    ctx.strokeStyle = rgb(TC.wire, frontAlpha); ctx.lineWidth = lineW; ctx.stroke();
+}
+
+function drawGlobe(ctx, cw, ch, t) {
+    var gcx = cw/2, gcy = ch/2, gr = Math.min(cw, ch)/2 - 35;
+    ctx.clearRect(0, 0, cw, ch);
+    var angle = globeRotY + t * 0.0001;
+
+    // Atmosphere glow
+    var glow = ctx.createRadialGradient(gcx, gcy, gr*0.9, gcx, gcy, gr*1.3);
+    glow.addColorStop(0, rgb(TC.wire, 0.04));
+    glow.addColorStop(1, rgb(TC.wire, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, cw, ch);
+
+    // Outer rings
+    ctx.beginPath(); ctx.arc(gcx, gcy, gr+2, 0, Math.PI*2);
+    ctx.strokeStyle = rgb(TC.wire, 0.12); ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(gcx, gcy, gr+8, 0, Math.PI*2);
+    ctx.strokeStyle = rgb(TC.wire, 0.04); ctx.lineWidth = 1; ctx.stroke();
+
+    // Longitude lines
+    for (var lon = -180; lon < 180; lon += 30) {
+        var pts = [];
+        for (var lat = -90; lat <= 90; lat += 3) pts.push(ll2xyz(lat, lon, gr));
+        drawGlobeArc(ctx, pts, gcx, gcy, angle, 0.15, 0.08, 0.5);
+    }
+
+    // Latitude lines
+    for (var lat = -60; lat <= 60; lat += 30) {
+        var pts = [];
+        for (var lon2 = 0; lon2 <= 360; lon2 += 3) pts.push(ll2xyz(lat, lon2, gr));
+        drawGlobeArc(ctx, pts, gcx, gcy, angle, 0.12, 0.08, 0.5);
+    }
+
+    // Equator
+    var eqPts = [];
+    for (var lon = 0; lon <= 360; lon += 2) eqPts.push(ll2xyz(0, lon, gr));
+    drawGlobeArc(ctx, eqPts, gcx, gcy, angle, 0.25, 0.06, 0.8);
+
+    // Orbital rings
+    var orbitR = gr * 1.18;
+    var oTilts = [0.3, -0.4, 0.15, -0.25, 0.5, -0.1];
+    for (var oi = 0; oi < oTilts.length; oi++) {
+        ctx.beginPath();
+        for (var a = 0; a <= 360; a += 3) {
+            var rad = a * Math.PI/180;
+            var p = [orbitR*Math.cos(rad), 0, orbitR*Math.sin(rad)];
+            p = rotX(p, oTilts[oi]+globeTilt); p = rotY(p, angle+oi*0.5);
+            var pp = project(p, gcx, gcy);
+            if (a === 0) ctx.moveTo(pp.x, pp.y); else ctx.lineTo(pp.x, pp.y);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = rgb(TC.wire, 0.06); ctx.lineWidth = 0.4; ctx.stroke();
+    }
+
+    // Satellites on orbits
+    var satsDraw = [];
+    for (var i = 0; i < currentSats.length; i++) {
+        var sat = currentSats[i];
+        var oi = i % oTilts.length;
+        var sa = (sat.az||0)*Math.PI/180 + t*0.00015;
+        var sr = gr * (1.05 + ((sat.el||45)/90)*0.25);
+        var sp = [sr*Math.cos(sa), 0, sr*Math.sin(sa)];
+        sp = rotX(sp, oTilts[oi]+globeTilt); sp = rotY(sp, angle+oi*0.5);
+        var spp = project(sp, gcx, gcy);
+        satsDraw.push({x:spp.x, y:spp.y, z:sp[2], s:spp.s, used:sat.used, prn:sat.PRN, ss:sat.ss||0});
+    }
+    satsDraw.sort(function(a,b) { return b.z - a.z; });
+
+    for (var i = 0; i < satsDraw.length; i++) {
+        var s = satsDraw[i];
+        var sz = (s.used ? 4 : 2.5) * s.s;
+        var col = s.used ? TC.locked : TC.dim;
+
+        if (s.used) {
+            // Glow
+            ctx.beginPath(); ctx.arc(s.x, s.y, sz*3, 0, Math.PI*2);
+            ctx.fillStyle = rgb(col, 0.08); ctx.fill();
+            // Pulse
+            var pulse = 1 + 0.5*Math.sin(t*0.003+i);
+            ctx.beginPath(); ctx.arc(s.x, s.y, sz*1.8*pulse, 0, Math.PI*2);
+            ctx.strokeStyle = rgb(col, 0.3/pulse); ctx.lineWidth = 0.5; ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(s.x, s.y, sz, 0, Math.PI*2);
+        ctx.fillStyle = rgb(col, s.used ? 1 : 0.6); ctx.fill();
+
+        if (s.s > 0.7) {
+            ctx.font = (s.used ? '600 ' : '400 ') + '9px IBM Plex Mono, monospace';
+            ctx.fillStyle = rgb(s.used ? TC.label : TC.labelDim, s.used ? 0.8 : 0.5);
+            ctx.textAlign = 'left';
+            ctx.fillText(s.prn, s.x+sz+3, s.y+3);
+        }
+    }
+
+    // Center dot
+    var cg = ctx.createRadialGradient(gcx, gcy, 0, gcx, gcy, 8);
+    cg.addColorStop(0, rgb(TC.center, 0.3)); cg.addColorStop(1, rgb(TC.center, 0));
+    ctx.fillStyle = cg; ctx.fillRect(gcx-8, gcy-8, 16, 16);
+    ctx.beginPath(); ctx.arc(gcx, gcy, 2, 0, Math.PI*2);
+    ctx.fillStyle = rgb(TC.center, 1); ctx.fill();
+}
+
+// ═══════════════════════════════════════════
+// 7. RADAR SCOPE
+// ═══════════════════════════════════════════
+function drawRadar(ctx, cw, ch, t) {
+    var rcx = cw/2, rcy = ch/2, rr = Math.min(cw, ch)/2 - 20;
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Background
+    var bg = ctx.createRadialGradient(rcx, rcy, 0, rcx, rcy, rr);
+    bg.addColorStop(0, rgb(TC.wire, 0.03));
+    bg.addColorStop(1, 'rgba(0,0,0,0.01)');
+    ctx.beginPath(); ctx.arc(rcx, rcy, rr, 0, Math.PI*2);
+    ctx.fillStyle = bg; ctx.fill();
+
+    // Outer ring
+    ctx.beginPath(); ctx.arc(rcx, rcy, rr, 0, Math.PI*2);
+    ctx.strokeStyle = rgb(TC.wire, 0.2); ctx.lineWidth = 1.5; ctx.stroke();
+
+    // Elevation rings
+    [rr*2/3, rr/3].forEach(function(r) {
+        ctx.beginPath(); ctx.arc(rcx, rcy, r, 0, Math.PI*2);
+        ctx.strokeStyle = rgb(TC.wire, 0.07); ctx.lineWidth = 0.5;
+        ctx.setLineDash([3,5]); ctx.stroke(); ctx.setLineDash([]);
+    });
+
+    // Crosshairs
+    for (var ci = 0; ci < 8; ci++) {
+        var ca = ci * Math.PI/4;
+        ctx.beginPath(); ctx.moveTo(rcx, rcy);
+        ctx.lineTo(rcx+rr*Math.sin(ca), rcy-rr*Math.cos(ca));
+        ctx.strokeStyle = rgb(TC.wire, 0.08); ctx.lineWidth = 0.5; ctx.stroke();
+    }
+
+    // Labels
+    ctx.font = '500 10px IBM Plex Mono, monospace';
+    ctx.fillStyle = rgb(TC.label, 0.7); ctx.textAlign = 'center';
+    ctx.fillText('N', rcx, rcy-rr-8);
+    ctx.fillText('S', rcx, rcy+rr+15);
+    ctx.fillText('E', rcx+rr+12, rcy+4);
+    ctx.fillText('W', rcx-rr-12, rcy+4);
+
+    ctx.font = '400 9px IBM Plex Mono, monospace';
+    ctx.fillStyle = rgb(TC.label, 0.5);
+    ctx.fillText('30\u00b0', rcx+rr*2/3+2, rcy-4);
+    ctx.fillText('60\u00b0', rcx+rr/3+2, rcy-4);
+
+    // Sweep
+    var sweepAngle = (t * 0.0008) % (Math.PI*2);
+    for (var ti = 0; ti < 20; ti++) {
+        var ta = sweepAngle - 0.5*(ti/20);
+        ctx.beginPath(); ctx.moveTo(rcx, rcy);
+        ctx.arc(rcx, rcy, rr, ta-0.03, ta+0.03); ctx.closePath();
+        ctx.fillStyle = rgb(TC.sweep, 0.08*(1-ti/20)); ctx.fill();
+    }
+    var sx = rcx+rr*Math.sin(sweepAngle), sy = rcy-rr*Math.cos(sweepAngle);
+    ctx.beginPath(); ctx.moveTo(rcx, rcy); ctx.lineTo(sx, sy);
+    var sg = ctx.createLinearGradient(rcx, rcy, sx, sy);
+    sg.addColorStop(0, rgb(TC.sweep, 0.5)); sg.addColorStop(1, rgb(TC.sweep, 0.1));
+    ctx.strokeStyle = sg; ctx.lineWidth = 1; ctx.stroke();
+
+    // Satellites
+    for (var i = 0; i < currentSats.length; i++) {
+        var sat = currentSats[i];
+        var elR = rr*(90-(sat.el||0))/90;
+        var azR = (sat.az||0)*Math.PI/180;
+        var sx = rcx+elR*Math.sin(azR), sy = rcy-elR*Math.cos(azR);
+        var col = sat.used ? TC.locked : TC.dim;
+
+        if (sat.used) {
+            var gg = ctx.createRadialGradient(sx, sy, 0, sx, sy, 12);
+            gg.addColorStop(0, rgb(col, 0.15)); gg.addColorStop(1, rgb(col, 0));
+            ctx.fillStyle = gg; ctx.fillRect(sx-12, sy-12, 24, 24);
+
+            var ping = 1+0.6*Math.sin(t*0.003+i*0.7);
+            ctx.beginPath(); ctx.arc(sx, sy, 5*ping, 0, Math.PI*2);
+            ctx.strokeStyle = rgb(col, 0.25/ping); ctx.lineWidth = 0.6; ctx.stroke();
+        }
+
+        ctx.beginPath(); ctx.arc(sx, sy, sat.used?3.5:2, 0, Math.PI*2);
+        ctx.fillStyle = rgb(col, sat.used?1:0.5); ctx.fill();
+
+        ctx.font = (sat.used?'600 ':'400 ')+'9px IBM Plex Mono, monospace';
+        ctx.fillStyle = rgb(sat.used?TC.label:TC.labelDim, sat.used?0.8:0.7);
+        ctx.textAlign = 'left';
+        ctx.fillText(sat.PRN, sx+6, sy+3);
+    }
+
+    // Center
+    ctx.beginPath(); ctx.arc(rcx, rcy, 2.5, 0, Math.PI*2);
+    ctx.fillStyle = rgb(TC.sweep, 0.5); ctx.fill();
+}
+
+// ═══════════════════════════════════════════
+// 8. ANIMATION LOOP + VIZ PICKER
+// ═══════════════════════════════════════════
+var activeVizLeft = localStorage.getItem('chronolens-viz-left') || 'globe';
 var activeVizRight = localStorage.getItem('chronolens-viz-right') || 'radar';
 var lastNtpData = {};
 
@@ -318,9 +541,15 @@ function drawVizOnCanvas(vizKey, ctx, cw, ch, t, side) {
 
     ctx.save();
     try {
-        var viz = VizEngine.registry[vizKey];
-        if (viz && viz.draw) {
-            viz.draw(ctx, cw, ch, t, currentSats, lastNtpData, TC);
+        if (vizKey === 'globe') {
+            drawGlobe(ctx, cw, ch, t);
+        } else if (vizKey === 'radar') {
+            drawRadar(ctx, cw, ch, t);
+        } else {
+            var viz = VizEngine.registry[vizKey];
+            if (viz && viz.draw) {
+                viz.draw(ctx, cw, ch, t, currentSats, lastNtpData, TC);
+            }
         }
     } finally {
         ctx.restore();
@@ -376,7 +605,7 @@ function selectViz(panel, vizKey) {
         localStorage.setItem('chronolens-viz-left', vizKey);
         document.getElementById('vizLeftTitle').textContent = VizEngine.registry[vizKey].name;
         var strip = document.getElementById('satCountStrip');
-        if (strip) strip.style.display = (vizKey === 'planet' || vizKey === 'radar') ? 'flex' : 'none';
+        if (strip) strip.style.display = (vizKey === 'globe' || vizKey === 'radar') ? 'flex' : 'none';
     } else {
         activeVizRight = vizKey;
         localStorage.setItem('chronolens-viz-right', vizKey);
@@ -410,11 +639,11 @@ document.addEventListener('keydown', function(e) {
     var regR = VizEngine.registry[activeVizRight];
     if (regR) document.getElementById('vizRightTitle').textContent = regR.name;
     var strip = document.getElementById('satCountStrip');
-    if (strip) strip.style.display = (activeVizLeft === 'planet' || activeVizLeft === 'radar') ? 'flex' : 'none';
+    if (strip) strip.style.display = (activeVizLeft === 'globe' || activeVizLeft === 'radar') ? 'flex' : 'none';
 })();
 
 // ═══════════════════════════════════════════
-// 7. NTP POLLING
+// 9. NTP POLLING
 // ═══════════════════════════════════════════
 function esc(s) { var el=document.createElement('span'); el.textContent=String(s); return el.innerHTML; }
 
@@ -428,7 +657,7 @@ async function fetchNTP() {
             oe.textContent = 'Disconnected'; oe.style.color = 'var(--accent-bad)'; oe.className = 'metric-value';
             dot.classList.add('error');
             document.getElementById('ntpTableBody').innerHTML =
-                '<tr><td colspan="8" style="padding:1.2rem;color:var(--accent-bad);">' + esc(d.error) + '</td></tr>';
+                '<tr><td colspan="7" style="padding:1.2rem;color:var(--accent-bad);">' + esc(d.error) + '</td></tr>';
             return;
         }
         dot.classList.remove('error');
@@ -440,34 +669,17 @@ async function fetchNTP() {
             VizEngine.pushTracking(d.tracking);
         }
 
-        // Server stratum from chronyc tracking — the single source of truth
-        var serverStratum = (d.tracking && d.tracking.stratum != null) ? d.tracking.stratum : '?';
-        document.getElementById('serverStratumBadge').textContent = 'Stratum ' + serverStratum + ' \u00b7 chronyc tracking';
-
-        var TYPE_LABELS = {refclock: '\u2693 Refclock', server: '\u2191 Remote', peer: '\u21c4 Peer', unknown: '? Unknown'};
-        var STATE_LABELS = {synced: '\u2713 Synced', combined: '+ Combined', excluded: '\u2212 Excluded',
-            unknown: '? Unreach', falseticker: '\u2717 False', variable: '~ Variable'};
-        var STATE_COLORS = {synced: 'var(--accent-3)', combined: 'var(--accent-1)', excluded: 'var(--text-tertiary)',
-            unknown: 'var(--accent-2)', falseticker: 'var(--accent-bad)', variable: 'var(--accent-2-dim)'};
-
         document.getElementById('ntpTableBody').innerHTML = (d.sources||[]).map(function(s) {
-            var a = s.source_state === 'synced';
-            var typeLabel = TYPE_LABELS[s.source_type] || s.source_type;
-            var stateLabel = STATE_LABELS[s.source_state] || s.source_state;
-            var stateColor = STATE_COLORS[s.source_state] || '';
-            return '<tr class="'+(a?'row-active':'')+'">' +
-                '<td style="opacity:0.7;font-size:0.8em;">'+esc(typeLabel)+'</td>' +
-                '<td>'+esc(s.name)+'</td>' +
-                '<td>'+esc(serverStratum)+'</td>' +
-                '<td style="color:'+stateColor+'">'+esc(stateLabel)+'</td>' +
-                '<td>'+esc(s.poll)+'</td><td>'+esc(s.reach)+'</td>' +
-                '<td>'+esc(s.lastrx)+'</td><td>'+esc(s.last_sample)+'</td></tr>';
-        }).join('') || '<tr><td colspan="8" style="padding:1.2rem;text-align:center;color:var(--text-tertiary);">No sources</td></tr>';
+            var a = s.state.includes('*')||s.name.includes('PPS')||s.name.includes('GPS');
+            return '<tr class="'+(a?'row-active':'')+'"><td>'+esc(s.state)+'</td><td>'+esc(s.name)+
+                '</td><td>'+esc(s.stratum)+'</td><td>'+esc(s.poll)+'</td><td>'+esc(s.reach)+
+                '</td><td>'+esc(s.lastrx)+'</td><td>'+esc(s.last_sample)+'</td></tr>';
+        }).join('') || '<tr><td colspan="7" style="padding:1.2rem;text-align:center;color:var(--text-tertiary);">No sources</td></tr>';
     } catch(e) { console.error('NTP fail', e); }
 }
 
 // ═══════════════════════════════════════════
-// 8. GPS POLLING
+// 10. GPS POLLING
 // ═══════════════════════════════════════════
 var sweepTimer = 30;
 
@@ -515,7 +727,7 @@ setInterval(function() {
 }, 1000);
 
 // ═══════════════════════════════════════════
-// 9. AUTO-CYCLE
+// 11. AUTO-CYCLE
 // ═══════════════════════════════════════════
 var autoCycleTimer = null;
 var autoCycleInterval = parseInt(localStorage.getItem('chronolens-cycle-interval')) || 0; // 0 = off
@@ -562,7 +774,7 @@ function setAutoCycle(seconds) {
 }
 
 // ═══════════════════════════════════════════
-// 10. INIT
+// 12. INIT
 // ═══════════════════════════════════════════
 loadUI(); fetchNTP(); fetchGPS();
 setInterval(fetchNTP, 2000);
