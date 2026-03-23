@@ -196,24 +196,23 @@ async function loadUI() {
 
 document.getElementById('configForm').addEventListener('submit', async function(e) {
     e.preventDefault();
+    var latVal = parseFloat(document.getElementById('receiverLat').value);
+    var lonVal = parseFloat(document.getElementById('receiverLon').value);
+    var payload = {
+        mode: document.getElementById('mode').value,
+        host: document.getElementById('host').value,
+        user: document.getElementById('user').value,
+        auth: document.getElementById('auth').value,
+        password: document.getElementById('password').value,
+        receiver_lat: isNaN(latVal) ? '' : latVal,
+        receiver_lon: isNaN(lonVal) ? '' : lonVal
+    };
+    var ct = document.getElementById('cesiumToken').value;
+    if (ct) payload.cesium_token = ct;  // only send if user entered a new one
     await authFetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: (function() {
-            var payload = {
-                mode: document.getElementById('mode').value,
-                host: document.getElementById('host').value,
-                user: document.getElementById('user').value,
-                auth: document.getElementById('auth').value,
-                password: document.getElementById('password').value,
-                receiver_lat: (function(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; })(document.getElementById('receiverLat').value),
-                receiver_lon: (function(v) { var n = parseFloat(v); return isNaN(n) ? '' : n; })(document.getElementById('receiverLon').value)
-            };
-            var ct = document.getElementById('cesiumToken').value;
-            if (ct) payload.cesium_token = ct;  // only send if user entered a new one
-            return JSON.stringify(payload);
-        })()
-    })
+        body: JSON.stringify(payload)
     });
     closeSettings(); loadUI(); fetchNTP(); fetchGPS();
 });
