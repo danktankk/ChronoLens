@@ -276,7 +276,7 @@ def get_ntp():
 
     outs = run_commands_remote(cmds, config)
 
-    tracking_out, sources_out, sourcestats_out = outs[0], outs[1], outs[2]
+    tracking_out, sources_out, sourcestats_out = outs
 
     # Parse tracking into structured data
     tracking = parse_tracking(tracking_out)
