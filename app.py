@@ -73,6 +73,12 @@ def save_config(config):
     with open(CONFIG_FILE, 'w') as f: json.dump(config, f)
 
 KNOWN_HOSTS_FILE = os.path.join(DATA_DIR, 'known_hosts')
+SSH_KNOWN_HOSTS = os.path.join(SSH_KEY_DIR, 'known_hosts')
+
+# If user placed a known_hosts in /app/ssh/, import it to /app/data/
+if os.path.isfile(SSH_KNOWN_HOSTS) and not os.path.isfile(KNOWN_HOSTS_FILE):
+    import shutil
+    shutil.copy2(SSH_KNOWN_HOSTS, KNOWN_HOSTS_FILE)
 
 def run_commands_remote(cmds, config):
     if not _ssh_semaphore.acquire(timeout=5):
