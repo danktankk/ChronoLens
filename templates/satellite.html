@@ -685,11 +685,12 @@
         function flyToReceiver() {
             if (isFlying) return;
             isFlying = true;
-            pauseAutoRotate();
+            // Hard-stop rotation — no idle timer resume
+            autoRotate = false;
+            clearTimeout(idleTimer);
 
             if (!isZoomedIn) {
-                // Multi-stage descent: fast to 1600km, then slow to 1km (lets textures load)
-                // trackedEntity is set AFTER descent completes to avoid fighting the flyTo
+                // Multi-stage descent: fast to 1600km, then slow to 1km
                 viewer.camera.flyTo({
                     destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 1600000),
                     orientation: {
@@ -711,8 +712,7 @@
                             duration: 14,
                             easingFunction: Cesium.EasingFunction.CUBIC_OUT,
                             complete: function() {
-                                // Lock camera to receiver — rotates with earth
-                                viewer.trackedEntity = receiverEntity;
+                                // Stay put — no trackedEntity (causes camera snap)
                                 isZoomedIn = true;
                                 isFlying = false;
                                 flyToBtn.classList.add('zoomed-in');
@@ -728,9 +728,6 @@
                     }
                 });
             } else {
-                // Unlock tracking so earth rotates freely again
-                viewer.trackedEntity = undefined;
-
                 // Fly back out to orbital view
                 viewer.camera.flyTo({
                     destination: Cesium.Cartesian3.fromDegrees(RECEIVER_LON, RECEIVER_LAT, 42000000),
@@ -746,9 +743,12 @@
                         isFlying = false;
                         flyToBtn.classList.remove('zoomed-in');
                         flyToBtn.title = 'Fly to receiver';
+                        // Resume rotation after zoom-out
+                        idleTimer = setTimeout(function() { autoRotate = true; }, 5000);
                     },
                     cancel: function() {
                         isFlying = false;
+                        idleTimer = setTimeout(function() { autoRotate = true; }, 5000);
                     }
                 });
             }
@@ -812,7 +812,6 @@
             function startAction(action, btn) {
                 if (action === 'home') {
                     pauseAutoRotate();
-                    viewer.trackedEntity = undefined;
                     isZoomedIn = false;
                     isFlying = false;
                     flyToBtn.classList.remove('zoomed-in');
