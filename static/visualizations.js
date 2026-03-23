@@ -902,7 +902,6 @@ var VizEngine = (function() {
         ctx.font = '600 10px IBM Plex Mono, monospace';
         ctx.fillStyle = rgb(TC.label, 0.8); ctx.textAlign = 'left';
         ctx.fillText('SYNC PULSE', pad, pad - 10);
-        ctx.font = '600 10px IBM Plex Mono, monospace';
         ctx.fillStyle = rgb(qCol, 0.9); ctx.textAlign = 'right';
         ctx.fillText(quality + ' \u2502 ' + formatNano(vals[vals.length - 1]), pad + gw, pad - 10);
 
