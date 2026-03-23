@@ -59,6 +59,11 @@ def find_ssh_key():
         path = os.path.join(SSH_KEY_DIR, name)
         if os.path.isfile(path):
             return path
+    # Fallback: use any non-.pub file in the ssh dir
+    for name in os.listdir(SSH_KEY_DIR):
+        path = os.path.join(SSH_KEY_DIR, name)
+        if os.path.isfile(path) and not name.endswith('.pub'):
+            return path
     return None
 
 # --- Config Handling ---
