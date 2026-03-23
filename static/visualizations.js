@@ -1006,11 +1006,11 @@ var VizEngine = (function() {
                 ctx.textAlign = 'center';
                 var sname = src.name.length > 16 ? src.name.substring(0,15)+'\u2026' : src.name;
                 ctx.fillText(sname, nx, ny+18);
-                // Type + stratum badge
+                // Badge: show source type, use tracking stratum for the server's level
                 var badge;
                 if (isRefclock) badge = 'REF';
                 else if (strat === 0 || strat >= 16) badge = '?';
-                else badge = 'STR ' + strat;
+                else badge = 'STR ' + (tracking.stratum != null ? tracking.stratum : strat);
                 ctx.font = '600 9px IBM Plex Mono, monospace';
                 ctx.fillText(badge, nx, ny + 3);
             }

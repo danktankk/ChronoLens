@@ -440,10 +440,9 @@ async function fetchNTP() {
             VizEngine.pushTracking(d.tracking);
         }
 
-        // Show server stratum badge
-        if (d.tracking && d.tracking.stratum != null) {
-            document.getElementById('serverStratumBadge').textContent = 'Server Stratum ' + d.tracking.stratum + ' \u00b7 chronyc';
-        }
+        // Server stratum from chronyc tracking — the single source of truth
+        var serverStratum = (d.tracking && d.tracking.stratum != null) ? d.tracking.stratum : '?';
+        document.getElementById('serverStratumBadge').textContent = 'Stratum ' + serverStratum + ' \u00b7 chronyc tracking';
 
         var TYPE_LABELS = {refclock: '\u2693 Refclock', server: '\u2191 Remote', peer: '\u21c4 Peer', unknown: '? Unknown'};
         var STATE_LABELS = {synced: '\u2713 Synced', combined: '+ Combined', excluded: '\u2212 Excluded',
@@ -459,7 +458,7 @@ async function fetchNTP() {
             return '<tr class="'+(a?'row-active':'')+'">' +
                 '<td style="opacity:0.7;font-size:0.8em;">'+esc(typeLabel)+'</td>' +
                 '<td>'+esc(s.name)+'</td>' +
-                '<td>'+esc(s.stratum_label || s.stratum)+'</td>' +
+                '<td>'+esc(serverStratum)+'</td>' +
                 '<td style="color:'+stateColor+'">'+esc(stateLabel)+'</td>' +
                 '<td>'+esc(s.poll)+'</td><td>'+esc(s.reach)+'</td>' +
                 '<td>'+esc(s.lastrx)+'</td><td>'+esc(s.last_sample)+'</td></tr>';

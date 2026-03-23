@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-APP_VERSION = "v0.5.2"
+APP_VERSION = "v0.5.3"
 
 @app.after_request
 def security_headers(response):
@@ -300,32 +300,10 @@ def get_ntp():
                 mode = MODE_MAP.get(ms[0], 'unknown') if ms else 'unknown'
                 state = STATE_MAP.get(ms[1], 'unknown') if len(ms) > 1 else 'unknown'
                 raw_stratum = int(parts[2]) if parts[2].isdigit() else 0
-                reach = parts[4]  # octal reach register
-                # NTP stratum hierarchy (RFC 5905):
-                # Stratum 0 = reference clock hardware (GPS, atomic clock, PPS)
-                # Stratum 1 = server directly synced to stratum 0 hardware
-                # Stratum 2-15 = each level further from reference
-                # Stratum 16 = unsynchronized
-                #
-                # In chronyc sources output:
-                # - Refclock (#) stratum 0 = correct, it IS the reference hardware
-                # - Remote (^/=) stratum 0 = chrony has no data yet (never polled
-                #   successfully, or source is unreachable). NOT a stratum 0 device.
-                if mode == 'refclock':
-                    stratum_label = "0 \u00b7 Ref Clock"
-                elif raw_stratum == 0 or raw_stratum >= 16:
-                    # Remote/peer at 0 or 16+ = no valid stratum received
-                    if reach == '0' or reach == '000':
-                        stratum_label = "\u2014 No Reply"
-                    else:
-                        stratum_label = "\u2014 Unsync"
-                else:
-                    stratum_label = str(raw_stratum)
 
                 sources.append({
                     "mode_state": ms, "name": parts[1],
                     "stratum": raw_stratum,
-                    "stratum_label": stratum_label,
                     "source_type": mode, "source_state": state,
                     "poll": parts[3], "reach": parts[4], "lastrx": parts[5],
                     "last_sample": " ".join(parts[6:])
