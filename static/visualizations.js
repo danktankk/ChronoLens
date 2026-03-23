@@ -935,6 +935,15 @@ var VizEngine = (function() {
             ctx.fillText('STR ' + tracking.stratum, cx, cy + 22);
         }
 
+        // Stratum 0 ring for refclocks
+        var refR = 0.6 * 55;
+        ctx.beginPath(); ctx.arc(cx, cy, refR, 0, Math.PI*2);
+        ctx.strokeStyle = rgb(TC.center, 0.1); ctx.lineWidth = 0.5;
+        ctx.setLineDash([2,4]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.font = '400 8px IBM Plex Mono, monospace';
+        ctx.fillStyle = rgb(TC.center, 0.5); ctx.textAlign = 'left';
+        ctx.fillText('STR 0 (Ref)', cx+refR+5, cy-6);
+
         var maxStrat = 4;
         for (var s = 1; s <= maxStrat; s++) {
             var r = s * 55;

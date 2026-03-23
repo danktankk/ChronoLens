@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-APP_VERSION = "v0.5.0"
+APP_VERSION = "v0.5.1"
 
 @app.after_request
 def security_headers(response):
@@ -299,9 +299,24 @@ def get_ntp():
                 ms = parts[0]  # e.g. "#*", "^~", "^?"
                 mode = MODE_MAP.get(ms[0], 'unknown') if ms else 'unknown'
                 state = STATE_MAP.get(ms[1], 'unknown') if len(ms) > 1 else 'unknown'
+                raw_stratum = int(parts[2]) if parts[2].isdigit() else 0
+                # NTP hierarchy context:
+                # - Refclock (#) at stratum 0 = hardware reference device (GPS, atomic clock)
+                # - Remote (^) or peer (=) at stratum 0 = unsynchronized (no valid time)
+                # - Stratum 16 = unsynchronized in NTP protocol
+                if mode == 'refclock' and raw_stratum == 0:
+                    stratum_label = "0 \u00b7 Ref Clock"
+                elif mode != 'refclock' and raw_stratum == 0:
+                    stratum_label = "\u2014 Unsync"
+                elif raw_stratum >= 16:
+                    stratum_label = "\u2014 Unsync"
+                else:
+                    stratum_label = str(raw_stratum)
+
                 sources.append({
                     "mode_state": ms, "name": parts[1],
-                    "stratum": parts[2],  # raw from chronyc — correct as-is
+                    "stratum": raw_stratum,
+                    "stratum_label": stratum_label,
                     "source_type": mode, "source_state": state,
                     "poll": parts[3], "reach": parts[4], "lastrx": parts[5],
                     "last_sample": " ".join(parts[6:])
