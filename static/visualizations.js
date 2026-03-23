@@ -961,8 +961,20 @@ var VizEngine = (function() {
                 var src = sources[i];
                 var strat = parseInt(src.stratum);
                 if (isNaN(strat) || strat < 0) strat = 1;
-                // Stratum 0 = refclock: place at ring 1 (closest to server)
-                var ringStrat = strat === 0 ? 0.6 : Math.min(strat, maxStrat);
+                var isRefclock = src.source_type === 'refclock';
+                // Ring placement based on source TYPE, not just stratum number:
+                // - Refclocks: inner ring (0.6) — they ARE stratum 0 hardware
+                // - Remote/peer at stratum 0: outer ring — means no reply/unsync, NOT hardware
+                // - Remote/peer at stratum 16+: outer ring — unsynchronized
+                // - Everything else: their actual stratum ring
+                var ringStrat;
+                if (isRefclock) {
+                    ringStrat = 0.6;  // stratum 0 ref clock ring
+                } else if (strat === 0 || strat >= 16) {
+                    ringStrat = maxStrat;  // push to outer edge — unknown/unsync
+                } else {
+                    ringStrat = Math.min(strat, maxStrat);
+                }
                 var r = ringStrat * 55;
                 var angle = i * angleStep - Math.PI/2 + Math.sin(t*0.0003)*0.1;
                 var nx = cx + r*Math.cos(angle), ny = cy + r*Math.sin(angle);
@@ -995,7 +1007,10 @@ var VizEngine = (function() {
                 var sname = src.name.length > 16 ? src.name.substring(0,15)+'\u2026' : src.name;
                 ctx.fillText(sname, nx, ny+18);
                 // Type + stratum badge
-                var badge = (src.source_type === 'refclock' ? 'REF' : 'STR ' + strat);
+                var badge;
+                if (isRefclock) badge = 'REF';
+                else if (strat === 0 || strat >= 16) badge = '?';
+                else badge = 'STR ' + strat;
                 ctx.font = '600 9px IBM Plex Mono, monospace';
                 ctx.fillText(badge, nx, ny + 3);
             }
