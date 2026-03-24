@@ -3,12 +3,12 @@
 </p>
 
 > **Based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL).**  
-> The original code and getting this project started are thanks to him alone — this project builds on that foundation.  
+> The original code and getting this project started are thanks to him — this project builds on that foundation.  
 > Original project licensed under [MIT](https://github.com/NightHawkATL/ntp-dashboard/blob/main/LICENSE).  
 >  
 > If you find this useful, consider giving his project a ⭐ [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard)
 
-A real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Runs as a single Docker container well under 100MB, connects to a remote chrony/gpsd host over SSH, and serves a browser-based UI with 16 live visualizations.
+A real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Runs as a single Docker container well under 100MB, connects to a remote chrony/gpsd host over SSH, and serves a browser-based UI with 16 live visualizations.  This fixes a lot of issues the original git didnt/doesnt want to address.
 
 ![Version](https://img.shields.io/badge/version-0.2.6-blue) ![Docker](https://img.shields.io/badge/docker-compose-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Port](https://img.shields.io/badge/port-55234-blue)
 
