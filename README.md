@@ -6,6 +6,8 @@ A lightweight, real-time NTP/GPS monitoring dashboard with a full 3D satellite t
 
 ![Version](https://img.shields.io/badge/version-0.3.2-blue) ![Docker](https://img.shields.io/badge/docker-compose-blue) ![License](https://img.shields.io/badge/license-AGPL--3.0-blue) ![Port](https://img.shields.io/badge/port-55234-blue)
 
+> **Based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL).**
+
 
 ---
 
