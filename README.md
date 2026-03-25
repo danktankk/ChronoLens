@@ -226,6 +226,14 @@ Browser ──────► Flask (port 55234)
 ---
 
 
+
 ## License
 
-AGPLv3
+This project is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0).
+
+This means:
+- You can use, modify, and distribute this software freely
+- Any modifications must be released under the same license
+- **Network use counts as distribution** — if you deploy this as a service (SaaS, hosted dashboard, etc.), you must release your source code
+
+See [LICENSE](LICENSE) for the full text.
