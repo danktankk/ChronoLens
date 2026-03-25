@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 import os, json, re, threading, time
 from flask import Flask, render_template, jsonify, request
 import paramiko
