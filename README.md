@@ -40,10 +40,6 @@ A lightweight, real-time NTP/GPS monitoring dashboard with a full 3D satellite t
 |:-:|:-:|:-:|
 | ![Heatmap](screenshots/viz-heatmap.png) | ![Web](screenshots/viz-web.png) | ![Horizon](screenshots/viz-horizon.png) |
 
-| Signal Radar | Planet Earth |
-|:-:|:-:|
-| ![Signal Radar](screenshots/viz-signal-radar.png) | ![Planet](screenshots/viz-planet.png) |
-
 ### Visualizations (NTP/Chrony)
 | Chrony Dashboard | Offset Timeline | Frequency Drift |
 |:-:|:-:|:-:|
