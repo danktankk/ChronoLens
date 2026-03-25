@@ -228,4 +228,4 @@ Browser ──────► Flask (port 55234)
 
 ## License
 
-MIT
+AGPLv3
