@@ -4,7 +4,7 @@
 
 > **Based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL).**  
 
-A real-time NTP/GPS monitoring dashboard featuring a full 3D satellite tracker. It runs as a single Docker container well under 100MB, connects to a remote chrony/gpsd host over SSH with an option for key-based login, and serves a browser-based UI with 16 live visualizations. The project addresses several issues the original implementation left unresolved, and the visualizations are being refined over time to reflect geographically accurate positioning within practical limits due to visibility constainsts and the reality of the vastness of space.
+A lightweight, real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Packaged as a sub-100MB Docker container, it connects to a remote chrony/gpsd host over SSH (key-based supported) and delivers a browser UI with 16 live visualizations. It resolves key limitations in the original project and continues to improve geographic accuracy within the real-world constraints of satellite visibility and orbital scale.
 
 ![Version](https://img.shields.io/badge/version-0.2.6-blue) ![Docker](https://img.shields.io/badge/docker-compose-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Port](https://img.shields.io/badge/port-55234-blue)
 
