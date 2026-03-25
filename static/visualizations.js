@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // ── ChronoLens — Visualization Engine v2.1 ──
 // Data-driven canvas visualizations for chrony + GPS monitoring
 // Each viz: draw(ctx, w, h, t, sats, ntpData, TC)
