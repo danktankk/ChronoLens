@@ -2,8 +2,6 @@
   <img src="screenshots/banner.svg" alt="ChronoLens Banner" width="100%">
 </p>
 
-> **Based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL).**  
-
 A lightweight, real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Packaged as a sub-100MB Docker container, it connects to a remote chrony/gpsd host over SSH (key-based supported) and delivers a browser UI with 16 live visualizations. It resolves key limitations in the original project and continues to improve geographic accuracy within the real-world constraints of satellite visibility and orbital scale.
 
 ![Version](https://img.shields.io/badge/version-0.2.6-blue) ![Docker](https://img.shields.io/badge/docker-compose-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Port](https://img.shields.io/badge/port-55234-blue)
