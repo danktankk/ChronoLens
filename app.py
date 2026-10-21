@@ -6,7 +6,7 @@ from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-APP_VERSION = "v0.4.1"
+APP_VERSION = "v0.4.2"
 
 @app.after_request
 def security_headers(response):

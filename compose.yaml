@@ -4,7 +4,7 @@ services:
   chronolens:
     build: .
     container_name: chronolens
-    image: chronolens:latest
+    image: ghcr.io/danktankk/chronolens:0.4.2
     network_mode: "host"
     volumes:
       - ./data:/app/data        # Persists config + encryption key

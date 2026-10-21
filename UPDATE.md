@@ -3,9 +3,9 @@
   ┌──────────────┬─────────┬────────────────────────────────────────────────────┬───────────────────────────────────────────────────────┐
   │  Dependency  │ Version │                    What it does                    │                    Where it lives                     │
   ├──────────────┼─────────┼────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤
-  │ CesiumJS     │ 1.124   │ 3D globe renderer (WebGL)                          │ Downloaded during docker build from GitHub releases   │
+  │ CesiumJS     │ 1.146   │ 3D globe renderer (WebGL)                          │ Downloaded during docker build from GitHub releases   │
   ├──────────────┼─────────┼────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤
-  │ satellite.js │ 5.0.0   │ Computes satellite positions from TLE orbital data │ Downloaded during docker build from unpkg             │
+  │ satellite.js │ 6.0.2   │ Computes satellite positions from TLE orbital data │ Downloaded during docker build from unpkg             │
   ├──────────────┼─────────┼────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤
   │ TLE data     │ Live    │ Actual orbital parameters for GPS satellites       │ Fetched at runtime from celestrak.org every page load │
   └──────────────┴─────────┴────────────────────────────────────────────────────┴───────────────────────────────────────────────────────┘
@@ -17,10 +17,10 @@
   - You want new features
   - Security patches
 
-  To check: compare your version against https://github.com/CesiumGS/cesium/releases. To update: change 1.124 to the new version in the Dockerfile
+  To check: compare your version against https://github.com/CesiumGS/cesium/releases. To update: change 1.146 to the new version in the Dockerfile
   and rebuild.
 
-  satellite.js (rarely) — The math for orbital mechanics doesn't change. Only update if there's a bug fix. Current v5.0.0 is stable. Check
+  satellite.js (rarely) — The math for orbital mechanics doesn't change. Only update if there's a bug fix. Current v6.0.2 is stable (last line that ships the UMD dist/satellite.min.js the template loads as a global; 7.x is ESM-only and needs a template refactor). Check
   https://github.com/shashwatak/satellite-js/releases.
 
   TLE data (automatic, no action needed) — This is the only thing that changes frequently. TLEs go stale after a few days as orbits drift. The page

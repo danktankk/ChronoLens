@@ -4,7 +4,7 @@
 
 A lightweight, real-time NTP/GPS monitoring dashboard with a full 3D satellite tracker. Packaged as a sub-100MB Docker container, it connects to a remote chrony/gpsd host over SSH (key-based supported) and delivers a browser UI with 16 live visualizations. It resolves key limitations in the original project and continues to improve geographic accuracy within the real-world constraints of satellite visibility and orbital scale.
 
-![Version](https://img.shields.io/badge/version-0.3.2-blue) ![Docker](https://img.shields.io/badge/docker-compose-blue) ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
+![Version](https://img.shields.io/badge/version-0.4.2-blue) ![Docker](https://img.shields.io/badge/docker-compose-blue) ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
 > **Based on [ntp-dashboard](https://github.com/NightHawkATL/ntp-dashboard) by [NightHawkATL](https://github.com/NightHawkATL).**
 
@@ -130,9 +130,21 @@ To get a token:
 
 ### 4. Start
 
+Pull the published image (recommended):
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Or build from source:
+
 ```bash
 docker compose up -d --build
 ```
+
+Prebuilt images are published to GitHub Container Registry as `ghcr.io/danktankk/chronolens`.
+`compose.yaml` pins the release tag (`0.4.2`); a floating `latest` tag is also pushed.
 
 Dashboard will be available at `http://<your-host>:55234`
 
